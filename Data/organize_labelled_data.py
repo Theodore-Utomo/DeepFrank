@@ -59,11 +59,15 @@ def pair_images_labels(images_dir: str, labels_dir: str) -> List[Tuple[str, str]
         else:
             missing_images += 1
     if missing_images:
-        print(f"Warning: {missing_images} labels had no matching image and were skipped.")
+        print(
+            f"Warning: {missing_images} labels had no matching image and were skipped."
+        )
     return pairs
 
 
-def split_pairs(pairs: List[Tuple[str, str]], train: float, val: float, seed: int) -> Dict[str, List[Tuple[str, str]]]:
+def split_pairs(
+    pairs: List[Tuple[str, str]], train: float, val: float, seed: int
+) -> Dict[str, List[Tuple[str, str]]]:
     assert 0 < train < 1 and 0 <= val < 1 and train + val < 1
     test = 1.0 - train - val
     random.Random(seed).shuffle(pairs)
@@ -72,10 +76,12 @@ def split_pairs(pairs: List[Tuple[str, str]], train: float, val: float, seed: in
     n_val = int(n * val)
     result = {
         "train": pairs[:n_train],
-        "val": pairs[n_train:n_train + n_val],
-        "test": pairs[n_train + n_val:],
+        "val": pairs[n_train : n_train + n_val],
+        "test": pairs[n_train + n_val :],
     }
-    print(f"Split -> train: {len(result['train'])}, val: {len(result['val'])}, test: {len(result['test'])} (total {n})")
+    print(
+        f"Split -> train: {len(result['train'])}, val: {len(result['val'])}, test: {len(result['test'])} (total {n})"
+    )
     return result
 
 
@@ -87,7 +93,9 @@ def safe_copy(src: str, dst: str) -> None:
     shutil.copy2(src, dst)
 
 
-def build_output_paths(root: str, split_name: str, image_src: str, label_src: str) -> Tuple[str, str]:
+def build_output_paths(
+    root: str, split_name: str, image_src: str, label_src: str
+) -> Tuple[str, str]:
     img_name = os.path.basename(image_src)
     lbl_name = os.path.basename(label_src)
     img_dst = os.path.join(root, "images", split_name, img_name)
@@ -114,9 +122,15 @@ def main() -> None:
         default=os.path.join("Data", "cat_body_parts_dataset"),
         help="Output dataset root (default: Data/cat_body_parts_dataset)",
     )
-    parser.add_argument("--train", type=float, default=0.8, help="Train split ratio (default: 0.8)")
-    parser.add_argument("--val", type=float, default=0.1, help="Validation split ratio (default: 0.1)")
-    parser.add_argument("--seed", type=int, default=42, help="Random seed for splitting (default: 42)")
+    parser.add_argument(
+        "--train", type=float, default=0.8, help="Train split ratio (default: 0.8)"
+    )
+    parser.add_argument(
+        "--val", type=float, default=0.1, help="Validation split ratio (default: 0.1)"
+    )
+    parser.add_argument(
+        "--seed", type=int, default=42, help="Random seed for splitting (default: 42)"
+    )
     args = parser.parse_args()
 
     if not os.path.isdir(args.images_dir):
@@ -129,7 +143,9 @@ def main() -> None:
 
     for split_name, items in splits.items():
         for img_src, lbl_src in items:
-            img_dst, lbl_dst = build_output_paths(args.out_root, split_name, img_src, lbl_src)
+            img_dst, lbl_dst = build_output_paths(
+                args.out_root, split_name, img_src, lbl_src
+            )
             safe_copy(img_src, img_dst)
             safe_copy(lbl_src, lbl_dst)
 
@@ -138,5 +154,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
-

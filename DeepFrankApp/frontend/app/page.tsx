@@ -2,10 +2,14 @@
 
 import { useState, useRef } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { analyzeImage } from '@/lib/api';
 import { DetectionResponse } from '@/types/api';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function Home() {
+  const { user, isAuthenticated, logout: handleLogout, loading: authLoading } = useAuth();
+  const router = useRouter();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -13,6 +17,11 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [imageSize, setImageSize] = useState<{ width: number; height: number } | null>(null);
   const imageRef = useRef<HTMLImageElement>(null);
+
+  const handleLogoutClick = async () => {
+    await handleLogout();
+    router.push('/');
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -149,21 +158,49 @@ export default function Home() {
       <div className="max-w-4xl mx-auto">
         <div className="bg-white rounded-lg shadow-xl p-8">
           {/* Navigation */}
-          <div className="flex justify-end gap-4 mb-6">
-            <Link
-              href="/profile"
-              className="px-4 py-2 text-indigo-600 font-semibold rounded-lg
-                hover:bg-indigo-50 transition-colors duration-200"
-            >
-              My Profile
-            </Link>
-            <Link
-              href="/vets"
-              className="px-4 py-2 text-indigo-600 font-semibold rounded-lg
-                hover:bg-indigo-50 transition-colors duration-200"
-            >
-              Vets & Products
-            </Link>
+          <div className="flex justify-between items-center mb-6">
+            <div className="flex gap-4">
+              <Link
+                href="/profile"
+                className="px-4 py-2 text-indigo-600 font-semibold rounded-lg
+                  hover:bg-indigo-50 transition-colors duration-200"
+              >
+                My Profile
+              </Link>
+              <Link
+                href="/vets"
+                className="px-4 py-2 text-indigo-600 font-semibold rounded-lg
+                  hover:bg-indigo-50 transition-colors duration-200"
+              >
+                Vets & Products
+              </Link>
+            </div>
+            <div className="flex items-center gap-4">
+              {authLoading ? (
+                <div className="text-sm text-gray-500">Loading...</div>
+              ) : isAuthenticated && user ? (
+                <>
+                  <div className="text-sm text-gray-600">
+                    <span className="font-medium">{user.email}</span>
+                  </div>
+                  <button
+                    onClick={handleLogoutClick}
+                    className="px-4 py-2 bg-red-600 text-white font-semibold rounded-lg
+                      hover:bg-red-700 transition-colors duration-200"
+                  >
+                    Logout
+                  </button>
+                </>
+              ) : (
+                <Link
+                  href="/login"
+                  className="px-4 py-2 bg-indigo-600 text-white font-semibold rounded-lg
+                    hover:bg-indigo-700 transition-colors duration-200"
+                >
+                  Sign In
+                </Link>
+              )}
+            </div>
           </div>
 
           <h1 className="text-4xl font-bold text-center text-gray-900 mb-2">
@@ -269,33 +306,30 @@ export default function Home() {
             </div>
           )}
 
-          {/* Chat with Frankie */}
-          {result && (
+          {/* Open Chat Button */}
+          {result && result.chat_session_id && isAuthenticated && (
             <div className="mt-6 p-6 bg-white border border-gray-200 rounded-lg shadow-md">
-              <div className="flex items-center mb-4">
-                <div className="w-10 h-10 bg-indigo-600 rounded-full flex items-center justify-center mr-3">
-                  <span className="text-white font-bold text-lg">F</span>
-                </div>
-                <div>
-                  <h2 className="text-xl font-bold text-gray-900">Chat with Frankie</h2>
-                  <p className="text-sm text-gray-500">Your AI cat health assistant</p>
-                </div>
-              </div>
-
-              <div className="space-y-4 mt-4">
-                {/* User Message */}
-                <div className="flex justify-end">
-                  <div className="max-w-[80%] bg-indigo-600 text-white rounded-lg px-4 py-2 rounded-tr-none">
-                    <p className="text-sm">Does my cat look healthy?</p>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-indigo-600 rounded-full flex items-center justify-center">
+                    <span className="text-white font-bold text-lg">F</span>
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold text-gray-900">Chat with Frankie</h2>
+                    <p className="text-sm text-gray-500">Get insights about your cat's analysis</p>
                   </div>
                 </div>
-
-                {/* AI Message */}
-                <div className="flex justify-start">
-                  <div className="max-w-[80%] bg-gray-100 text-gray-900 rounded-lg px-4 py-2 rounded-tl-none">
-                    <p className="text-sm">Your cat seems to be in a relaxed position.</p>
-                  </div>
-                </div>
+                <button
+                  onClick={() => {
+                    // Store analysis data in sessionStorage for the chat page
+                    sessionStorage.setItem('analysisForChat', JSON.stringify(result));
+                    router.push(`/chat/${result.chat_session_id}`);
+                  }}
+                  className="px-6 py-2 bg-indigo-600 text-white font-semibold rounded-lg
+                    hover:bg-indigo-700 transition-colors duration-200"
+                >
+                  Open Chat
+                </button>
               </div>
             </div>
           )}

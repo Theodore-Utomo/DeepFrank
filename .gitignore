@@ -10,6 +10,12 @@
 *.tiff
 *.tif
 
+# MATLAB files
+*.mat
+
+# Markdown files
+*.md
+
 # Python
 __pycache__/
 *.py[cod]
@@ -70,10 +76,12 @@ dist/
 # Uncomment if you don't want to commit the model
 # *.onnx
 
-# Data directories with images (optional - uncomment if you want to exclude entire directories)
-# Data/cat_images/
-# Data/dog_images/
-# Data/cat_body_parts_dataset/images/
+# Data directories with images and labels
+Data/cat_images/
+Data/dog_images/
+Data/cat_labels/
+Data/cat_body_parts_dataset/images/
+Data/images_unlabelled/
 
 # Logs
 *.log

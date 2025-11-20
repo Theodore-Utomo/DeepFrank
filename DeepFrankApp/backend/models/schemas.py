@@ -1,4 +1,5 @@
 """Pydantic models for API requests and responses"""
+from re import L
 from pydantic import BaseModel
 from typing import Optional, List
 
@@ -30,6 +31,7 @@ class DetectionResponse(BaseModel):
     detections: List[BodyPartDetection]
     analysis: Optional[AnalysisResult] = None
     emotion: Optional[str] = None
+    chat_session_id: Optional[str] = None
 
 
 class HealthResponse(BaseModel):
@@ -43,3 +45,84 @@ class BreedsResponse(BaseModel):
     breeds: List[dict]
     message: Optional[str] = None
 
+
+# Authentication schemas
+class MagicLinkRequest(BaseModel):
+    """Request model for sending magic link"""
+    email: str
+
+
+class MagicLinkAuthenticateRequest(BaseModel):
+    """Request model for authenticating magic link"""
+    token: str
+
+
+class UserResponse(BaseModel):
+    """User information response"""
+    id: str
+    email: str
+    stytch_user_id: str
+    created_at: Optional[str] = None
+
+
+class AuthResponse(BaseModel):
+    """Authentication response"""
+    session_token: str
+    user: UserResponse
+
+
+class SessionResponse(BaseModel):
+    """Current session response"""
+    user: UserResponse
+    session_id: Optional[str] = None
+    expires_at: Optional[str] = None
+
+
+class MagicLinkSendResponse(BaseModel):
+    """Magic link send response"""
+    status: str
+    message: str
+    email_id: Optional[str] = None
+
+
+class LogoutResponse(BaseModel):
+    """Logout response"""
+    status: str
+    message: str
+
+
+class ImageAnalysisHistoryItem(BaseModel):
+    """Single image analysis history item"""
+    id: str
+    filename: str
+    detections: List[BodyPartDetection]
+    analysis: Optional[AnalysisResult] = None
+    emotion: Optional[str] = None
+    created_at: str
+
+
+class UserAnalysesResponse(BaseModel):
+    """Response for user's image analyses history"""
+    analyses: List[ImageAnalysisHistoryItem]
+    total: int
+
+class ChatSessionResponse(BaseModel):
+    """Chat session response"""
+    id: str
+    user_id: str
+    created_at: str
+    updated_at: str
+
+class ChatMessageRequest(BaseModel):
+    """Chat message request"""
+    session_id: str
+    content: str
+
+class ChatMessageResponse(BaseModel):
+    """Chat message response"""
+    id: str
+    session_id: str
+    sender: str
+    content: str
+    created_at: str
+    updated_at: str

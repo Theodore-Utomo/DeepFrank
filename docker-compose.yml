@@ -1,4 +1,22 @@
 services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: deepfrank-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: deepfrank_test
+    ports:
+      - "5433:5432"  # Use 5433 to avoid conflict with local PostgreSQL
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   api:
     build:
       context: ./DeepFrankApp/backend
@@ -11,12 +29,24 @@ services:
       - ./DeepFrankApp/backend:/app
       # Mount Data directory for accessing breeds.json and other data
       - ./Data:/app/data:ro  # Read-only mount
+    env_file:
+      - ./DeepFrankApp/backend/.env
     environment:
       - ENV=development
       - MODEL_CONF_THRESHOLD=0.25
       - MODEL_IOU_THRESHOLD=0.45
-      - ALLOWED_ORIGINS=*
+      - ALLOWED_ORIGINS=http://localhost:3000
+      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/deepfrank_test
+      - STYTCH_ENVIRONMENT=test
+      - MAGIC_LINK_REDIRECT_URL=http://localhost:3000/auth/callback
+      - OLLAMA_BASE_URL=http://cscigpu08.bc.edu:11434
+      - OLLAMA_MODEL=mistral:latest
+      - OLLAMA_TEMPERATURE=0
+      - CHAT_SYSTEM_PROMPT=You are Frankie, a helpful, friendly, and knowledgeable assistant specializing in cat health and emotional analysis. You help users understand their cat's emotional state and provide helpful advice about cat care.
     restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
       interval: 30s
@@ -44,3 +74,6 @@ services:
     restart: unless-stopped
     depends_on:
       - api
+
+volumes:
+  postgres_data:

@@ -1,99 +1,49 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { DetectionResponse } from '@/types/api';
-
-// Mock data for uploaded images and their analyses
-const mockUploadedImages = [
-  {
-    id: '1',
-    imageUrl: '/api/placeholder/400/300', // Using placeholder for now
-    fileName: 'cat_analysis_1.jpg',
-    uploadedAt: '2024-01-15T10:30:00Z',
-    analysis: {
-      detections: [
-        {
-          class_name: 'eye',
-          confidence: 0.85,
-          bbox: [100, 150, 200, 250] as [number, number, number, number],
-        },
-        {
-          class_name: 'mouth',
-          confidence: 0.78,
-          bbox: [180, 280, 250, 320] as [number, number, number, number],
-        },
-      ],
-      analysis: {
-        eye_state: 'wide_open',
-        mouth_state: 'closed',
-        tail_position: null,
-        tail_angle: null,
-      },
-      emotion: 'alert',
-    } as DetectionResponse,
-  },
-  {
-    id: '2',
-    imageUrl: '/api/placeholder/400/300',
-    fileName: 'cat_analysis_2.jpg',
-    uploadedAt: '2024-01-14T14:20:00Z',
-    analysis: {
-      detections: [
-        {
-          class_name: 'eye',
-          confidence: 0.92,
-          bbox: [120, 140, 220, 240] as [number, number, number, number],
-        },
-        {
-          class_name: 'tail',
-          confidence: 0.88,
-          bbox: [300, 400, 350, 600] as [number, number, number, number],
-        },
-      ],
-      analysis: {
-        eye_state: 'normal',
-        mouth_state: null,
-        tail_position: 'up',
-        tail_angle: 45.0,
-      },
-      emotion: 'content',
-    } as DetectionResponse,
-  },
-  {
-    id: '3',
-    imageUrl: '/api/placeholder/400/300',
-    fileName: 'cat_analysis_3.jpg',
-    uploadedAt: '2024-01-13T09:15:00Z',
-    analysis: {
-      detections: [
-        {
-          class_name: 'eye',
-          confidence: 0.75,
-          bbox: [150, 180, 240, 280] as [number, number, number, number],
-        },
-        {
-          class_name: 'mouth',
-          confidence: 0.82,
-          bbox: [200, 300, 280, 350] as [number, number, number, number],
-        },
-        {
-          class_name: 'tail',
-          confidence: 0.79,
-          bbox: [320, 450, 380, 620] as [number, number, number, number],
-        },
-      ],
-      analysis: {
-        eye_state: 'closed',
-        mouth_state: 'closed',
-        tail_position: 'down',
-        tail_angle: 135.0,
-      },
-      emotion: 'sleepy',
-    } as DetectionResponse,
-  },
-];
+import { useAuth } from '@/contexts/AuthContext';
+import { useRouter } from 'next/navigation';
+import { ImageAnalysisHistoryItem } from '@/types/api';
+import { getUserAnalyses } from '@/lib/api';
 
 export default function ProfilePage() {
+  const { user, isAuthenticated, loading: authLoading } = useAuth();
+  const router = useRouter();
+  const [analyses, setAnalyses] = useState<ImageAnalysisHistoryItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [total, setTotal] = useState(0);
+
+  useEffect(() => {
+    // Redirect to login if not authenticated
+    if (!authLoading && !isAuthenticated) {
+      router.push('/login');
+      return;
+    }
+
+    // Fetch user analyses if authenticated
+    if (isAuthenticated && user) {
+      fetchAnalyses();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated, authLoading, user]);
+
+  const fetchAnalyses = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await getUserAnalyses();
+      setAnalyses(response.analyses);
+      setTotal(response.total);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load analyses');
+      console.error('Error fetching analyses:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', {
@@ -105,26 +55,57 @@ export default function ProfilePage() {
     });
   };
 
-  const formatAnalysis = (analysis: DetectionResponse): string => {
+  const formatAnalysis = (item: ImageAnalysisHistoryItem): string => {
     const parts: string[] = [];
 
-    if (analysis.detections.length > 0) {
-      parts.push(`Detections: ${analysis.detections.length} body parts`);
+    if (item.detections.length > 0) {
+      parts.push(`Detections: ${item.detections.length} body parts`);
     }
 
-    if (analysis.analysis) {
-      const a = analysis.analysis;
+    if (item.analysis) {
+      const a = item.analysis;
       if (a.eye_state) parts.push(`Eyes: ${a.eye_state}`);
       if (a.mouth_state) parts.push(`Mouth: ${a.mouth_state}`);
       if (a.tail_position) parts.push(`Tail: ${a.tail_position}`);
     }
 
-    if (analysis.emotion) {
-      parts.push(`Emotion: ${analysis.emotion}`);
+    if (item.emotion) {
+      parts.push(`Emotion: ${item.emotion}`);
     }
 
     return parts.join(' • ');
   };
+
+  if (authLoading || loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-12 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-6xl mx-auto">
+          <div className="bg-white rounded-lg shadow-xl p-8">
+            <div className="text-center">
+              <p className="text-red-600 mb-4">{error}</p>
+              <button
+                onClick={fetchAnalyses}
+                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+              >
+                Retry
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-12 px-4 sm:px-6 lg:px-8">
@@ -184,22 +165,22 @@ export default function ProfilePage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
             <div className="bg-indigo-50 rounded-lg p-4">
               <p className="text-sm text-indigo-600 font-medium">Total Images</p>
-              <p className="text-3xl font-bold text-indigo-900">{mockUploadedImages.length}</p>
+              <p className="text-3xl font-bold text-indigo-900">{total}</p>
             </div>
             <div className="bg-green-50 rounded-lg p-4">
               <p className="text-sm text-green-600 font-medium">Analyses</p>
-              <p className="text-3xl font-bold text-green-900">{mockUploadedImages.length}</p>
+              <p className="text-3xl font-bold text-green-900">{total}</p>
             </div>
             <div className="bg-purple-50 rounded-lg p-4">
               <p className="text-sm text-purple-600 font-medium">Emotions Detected</p>
               <p className="text-3xl font-bold text-purple-900">
-                {new Set(mockUploadedImages.map(img => img.analysis.emotion).filter(Boolean)).size}
+                {new Set(analyses.map(item => item.emotion).filter(Boolean)).size}
               </p>
             </div>
           </div>
 
           {/* Image Grid */}
-          {mockUploadedImages.length === 0 ? (
+          {analyses.length === 0 ? (
             <div className="text-center py-12">
               <p className="text-gray-500 text-lg mb-4">No images uploaded yet</p>
               <Link
@@ -212,9 +193,9 @@ export default function ProfilePage() {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {mockUploadedImages.map((image) => (
+              {analyses.map((item) => (
                 <div
-                  key={image.id}
+                  key={item.id}
                   className="bg-gray-50 rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow"
                 >
                   {/* Image Placeholder */}
@@ -237,16 +218,16 @@ export default function ProfilePage() {
                   {/* Image Info */}
                   <div className="p-4">
                     <h3 className="font-semibold text-gray-900 mb-1 truncate">
-                      {image.fileName}
+                      {item.filename}
                     </h3>
                     <p className="text-xs text-gray-500 mb-3">
-                      {formatDate(image.uploadedAt)}
+                      {formatDate(item.created_at)}
                     </p>
 
                     {/* Analysis Summary */}
                     <div className="space-y-2">
                       <div className="flex flex-wrap gap-1">
-                        {image.analysis.detections.map((det, idx) => (
+                        {item.detections.map((det, idx) => (
                           <span
                             key={idx}
                             className="px-2 py-1 text-xs font-medium rounded
@@ -258,14 +239,14 @@ export default function ProfilePage() {
                       </div>
 
                       <p className="text-sm text-gray-700 line-clamp-2">
-                        {formatAnalysis(image.analysis)}
+                        {formatAnalysis(item)}
                       </p>
 
-                      {image.analysis.emotion && (
+                      {item.emotion && (
                         <div className="pt-2 border-t border-gray-200">
                           <span className="text-xs font-semibold text-gray-600">Emotion: </span>
                           <span className="text-sm font-bold text-indigo-600 uppercase">
-                            {image.analysis.emotion}
+                            {item.emotion}
                           </span>
                         </div>
                       )}
