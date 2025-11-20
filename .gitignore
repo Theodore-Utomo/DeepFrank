@@ -80,7 +80,7 @@ dist/
 Data/cat_images/
 Data/dog_images/
 Data/cat_labels/
-Data/cat_body_parts_dataset/images/
+Data/cat_body_parts_dataset/
 Data/images_unlabelled/
 
 # Logs
