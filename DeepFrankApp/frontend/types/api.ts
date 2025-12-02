@@ -22,6 +22,11 @@ export interface DetectionResponse {
   chat_session_id: string | null;
 }
 
+export interface ImageAnalysisResponse {
+  analysis_text: string;
+  chat_session_id: string | null;
+}
+
 // Authentication types
 export interface User {
   id: string;
@@ -54,6 +59,7 @@ export interface ImageAnalysisHistoryItem {
   detections: BodyPartDetection[];
   analysis: AnalysisResult | null;
   emotion: string | null;
+  chat_session_id: string | null;
   created_at: string;
 }
 

@@ -1,91 +1,72 @@
 'use client';
 
-import { useState, useRef } from 'react';
-import Link from 'next/link';
+import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { analyzeImage } from '@/lib/api';
-import { DetectionResponse } from '@/types/api';
+import { ImageAnalysisResponse } from '@/types/api';
 import { useAuth } from '@/contexts/AuthContext';
+import { MarkdownRenderer } from '@/components/MarkdownRenderer';
+import { DashboardLayout } from '@/components/layouts/DashboardLayout';
+import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Upload, Image as ImageIcon, Loader2, MessageSquare, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 
 export default function Home() {
-  const { user, isAuthenticated, logout: handleLogout, loading: authLoading } = useAuth();
+  const { isAuthenticated } = useAuth();
   const router = useRouter();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<DetectionResponse | null>(null);
+  const [result, setResult] = useState<ImageAnalysisResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [imageSize, setImageSize] = useState<{ width: number; height: number } | null>(null);
-  const imageRef = useRef<HTMLImageElement>(null);
+  const [isDragging, setIsDragging] = useState(false);
 
-  const handleLogoutClick = async () => {
-    await handleLogout();
-    router.push('/');
+  const handleFileChange = (file: File) => {
+    setSelectedFile(file);
+    setError(null);
+    setResult(null);
+    
+    // Create preview
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setPreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      setSelectedFile(file);
-      setError(null);
-      setResult(null);
-      setImageSize(null);
-      
-      // Create preview
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+      handleFileChange(file);
     }
   };
 
-  const handleImageLoad = () => {
-    if (imageRef.current) {
-      setImageSize({
-        width: imageRef.current.naturalWidth,
-        height: imageRef.current.naturalHeight,
-      });
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    const file = e.dataTransfer.files?.[0];
+    if (file && file.type.startsWith('image/')) {
+      handleFileChange(file);
+    } else {
+      setError('Please drop a valid image file');
     }
-  };
-
-  const getBoundingBoxStyle = (bbox: [number, number, number, number]) => {
-    if (!imageRef.current || !imageSize) return {};
-    
-    const displayedWidth = imageRef.current.clientWidth;
-    const displayedHeight = imageRef.current.clientHeight;
-    
-    const scaleX = displayedWidth / imageSize.width;
-    const scaleY = displayedHeight / imageSize.height;
-    
-    const [x1, y1, x2, y2] = bbox;
-    
-    return {
-      position: 'absolute' as const,
-      left: `${x1 * scaleX}px`,
-      top: `${y1 * scaleY}px`,
-      width: `${(x2 - x1) * scaleX}px`,
-      height: `${(y2 - y1) * scaleY}px`,
-    };
-  };
-
-  const getBoxColor = (className: string): string => {
-    const colors: Record<string, string> = {
-      eye: 'rgba(255, 0, 0, 0.3)',      // Red with transparency
-      mouth: 'rgba(0, 255, 0, 0.3)',    // Green with transparency
-      tail: 'rgba(0, 0, 255, 0.3)',     // Blue with transparency
-    };
-    return colors[className] || 'rgba(255, 255, 0, 0.3)';
-  };
-
-  const getBoxBorderColor = (className: string): string => {
-    const colors: Record<string, string> = {
-      eye: '#ef4444',      // Red
-      mouth: '#22c55e',   // Green
-      tail: '#3b82f6',    // Blue
-    };
-    return colors[className] || '#eab308';
-  };
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -109,233 +90,202 @@ export default function Home() {
     }
   };
 
-  const formatAnalysis = (result: DetectionResponse): string => {
-    const parts: string[] = [];
-
-    // Detections
-    if (result.detections.length > 0) {
-      parts.push('=== Detected Body Parts ===');
-      result.detections.forEach((det, idx) => {
-        parts.push(
-          `${idx + 1}. ${det.class_name.toUpperCase()} (confidence: ${(det.confidence * 100).toFixed(1)}%)`
-        );
-        parts.push(`   Bounding box: [${det.bbox.join(', ')}]`);
-      });
-    } else {
-      parts.push('=== No body parts detected ===');
-    }
-
-    // Analysis
-    if (result.analysis) {
-      parts.push('\n=== Body Part Analysis ===');
-      const analysis = result.analysis;
-      
-      if (analysis.eye_state) {
-        parts.push(`Eyes: ${analysis.eye_state}, your cat's eyes are closed, it's probably sleeping or relaxed.`);
-      }
-      if (analysis.mouth_state) {
-        parts.push(`Mouth: ${analysis.mouth_state}, hmmm, the mouth looks a little strange, please upload a clearer photo.`);
-      }
-      if (analysis.tail_position) {
-        parts.push(`Tail Position: ${analysis.tail_position}`);
-        if (analysis.tail_angle !== null) {
-          parts.push(`Tail Angle: ${analysis.tail_angle.toFixed(1)}°`);
-        }
-      }
-    }
-
-    // Emotion
-    if (result.emotion) {
-      parts.push(`\n=== Emotional State ===`);
-      parts.push(`Emotion: ${result.emotion.toUpperCase()}`);
-    }
-
-    return parts.join('\n');
-  };
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-4xl mx-auto">
-        <div className="bg-white rounded-lg shadow-xl p-8">
-          {/* Navigation */}
-          <div className="flex justify-between items-center mb-6">
-            <div className="flex gap-4">
-              <Link
-                href="/profile"
-                className="px-4 py-2 text-indigo-600 font-semibold rounded-lg
-                  hover:bg-indigo-50 transition-colors duration-200"
-              >
-                My Profile
-              </Link>
-              <Link
-                href="/vets"
-                className="px-4 py-2 text-indigo-600 font-semibold rounded-lg
-                  hover:bg-indigo-50 transition-colors duration-200"
-              >
-                Vets & Products
-              </Link>
-            </div>
-            <div className="flex items-center gap-4">
-              {authLoading ? (
-                <div className="text-sm text-gray-500">Loading...</div>
-              ) : isAuthenticated && user ? (
-                <>
-                  <div className="text-sm text-gray-600">
-                    <span className="font-medium">{user.email}</span>
-                  </div>
-                  <button
-                    onClick={handleLogoutClick}
-                    className="px-4 py-2 bg-red-600 text-white font-semibold rounded-lg
-                      hover:bg-red-700 transition-colors duration-200"
-                  >
-                    Logout
-                  </button>
-                </>
-              ) : (
-                <Link
-                  href="/login"
-                  className="px-4 py-2 bg-indigo-600 text-white font-semibold rounded-lg
-                    hover:bg-indigo-700 transition-colors duration-200"
-                >
-                  Sign In
-                </Link>
-              )}
-            </div>
-          </div>
-
-          <h1 className="text-4xl font-bold text-center text-gray-900 mb-2">
-            DeepFrank Cat Analysis
-          </h1>
-          <p className="text-center text-gray-600 mb-8">
-            Upload a cat image to analyze emotional state
+    <DashboardLayout>
+      <div className="max-w-4xl mx-auto space-y-6">
+        {/* Header */}
+        <div className="space-y-2">
+          <h1 className="text-4xl font-bold text-foreground">Cat Analysis</h1>
+          <p className="text-muted-foreground">
+            Upload a cat image to analyze emotional state and get insights
           </p>
+        </div>
 
+        {/* Upload Form */}
+        <Card className="p-6">
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* File Input */}
-            <div>
-              <label
-                htmlFor="image-upload"
-                className="block text-sm font-medium text-gray-700 mb-2"
-              >
-                Select Cat Image
-              </label>
+            {/* Drag and Drop Zone */}
+            <div
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+              onClick={() => {
+                if (!preview && !loading) {
+                  document.getElementById('image-upload')?.click();
+                }
+              }}
+              className={`
+                relative border-2 border-dashed rounded-lg p-12 text-center transition-colors
+                ${isDragging 
+                  ? 'border-primary bg-primary/5' 
+                  : 'border-border hover:border-primary/50'
+                }
+                ${preview ? 'p-4 cursor-default' : 'cursor-pointer'}
+                ${loading ? 'opacity-50 cursor-not-allowed' : ''}
+              `}
+            >
               <input
                 id="image-upload"
                 type="file"
                 accept="image/*"
-                onChange={handleFileChange}
-                className="block w-full text-sm text-gray-500
-                  file:mr-4 file:py-2 file:px-4
-                  file:rounded-lg file:border-0
-                  file:text-sm file:font-semibold
-                  file:bg-indigo-50 file:text-indigo-700
-                  hover:file:bg-indigo-100
-                  cursor-pointer"
+                onChange={handleFileInputChange}
+                className="hidden"
                 disabled={loading}
               />
-            </div>
-
-            {/* Preview with Bounding Boxes */}
-            {preview && (
-              <div className="flex justify-center">
-                <div className="relative inline-block">
-                  <img
-                    ref={imageRef}
-                    src={preview}
-                    alt="Preview"
-                    className="max-w-full h-auto max-h-96 rounded-lg shadow-md"
-                    onLoad={handleImageLoad}
-                  />
-                  {/* Bounding Box Overlay */}
-                  {result && result.detections.length > 0 && imageSize && (
-                    <div className="absolute inset-0 pointer-events-none">
-                      {result.detections.map((detection, idx) => (
-                        <div
-                          key={idx}
-                          style={{
-                            ...getBoundingBoxStyle(detection.bbox),
-                            border: `3px solid ${getBoxBorderColor(detection.class_name)}`,
-                            backgroundColor: getBoxColor(detection.class_name),
-                            borderRadius: '4px',
-                          }}
-                        >
-                          <div
-                            className="absolute -top-7 left-0 px-2 py-1 text-xs font-bold text-white rounded"
-                            style={{
-                              backgroundColor: getBoxBorderColor(detection.class_name),
-                            }}
-                          >
-                            {detection.class_name.toUpperCase()} {(detection.confidence * 100).toFixed(0)}%
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+              {preview ? (
+                <div className="space-y-4" onClick={(e) => e.stopPropagation()}>
+                  <div className="relative inline-block">
+                    <img
+                      src={preview}
+                      alt="Preview"
+                      className="max-w-full h-auto max-h-96 rounded-lg shadow-lg"
+                    />
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setPreview(null);
+                        setSelectedFile(null);
+                        setResult(null);
+                      }}
+                      className="absolute top-2 right-2 p-2 bg-background/80 backdrop-blur-sm rounded-full hover:bg-background transition-colors"
+                    >
+                      <span className="sr-only">Remove image</span>
+                      ×
+                    </button>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    {selectedFile?.name}
+                  </p>
                 </div>
-              </div>
-            )}
+              ) : (
+                <div className="flex flex-col items-center justify-center space-y-4">
+                  <div className="p-4 bg-primary/10 rounded-full">
+                    <Upload className="h-8 w-8 text-primary" />
+                  </div>
+                  <div className="space-y-2">
+                    <p className="text-lg font-medium text-foreground">
+                      Drag and drop your image here
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      or click anywhere to browse
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="cursor-pointer"
+                    disabled={loading}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      document.getElementById('image-upload')?.click();
+                    }}
+                  >
+                    <ImageIcon className="mr-2 h-4 w-4" />
+                    Select Image
+                  </Button>
+                </div>
+              )}
+            </div>
 
             {/* Submit Button */}
-            <button
+            <Button
               type="submit"
               disabled={!selectedFile || loading}
-              className="w-full py-3 px-4 bg-indigo-600 text-white font-semibold rounded-lg
-                hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500
-                focus:ring-offset-2 disabled:bg-gray-400 disabled:cursor-not-allowed
-                transition-colors duration-200"
+              className="w-full"
+              size="lg"
             >
-              {loading ? 'Analyzing...' : 'Analyze Image'}
-            </button>
+              {loading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Analyzing...
+                </>
+              ) : (
+                <>
+                  <ImageIcon className="mr-2 h-4 w-4" />
+                  Analyze Image
+                </>
+              )}
+            </Button>
           </form>
+        </Card>
 
-          {/* Error Display */}
-          {error && (
-            <div className="mt-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-              <p className="text-red-800 font-medium">Error:</p>
-              <p className="text-red-600">{error}</p>
-            </div>
-          )}
-
-          {/* Results Display */}
-          {result && (
-            <div className="mt-6 p-6 bg-gray-50 border border-gray-200 rounded-lg">
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">Analysis Results</h2>
-              <pre className="whitespace-pre-wrap font-mono text-sm text-gray-800 bg-white p-4 rounded border border-gray-300 overflow-x-auto">
-                {formatAnalysis(result)}
-              </pre>
-            </div>
-          )}
-
-          {/* Open Chat Button */}
-          {result && result.chat_session_id && isAuthenticated && (
-            <div className="mt-6 p-6 bg-white border border-gray-200 rounded-lg shadow-md">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-indigo-600 rounded-full flex items-center justify-center">
-                    <span className="text-white font-bold text-lg">F</span>
-                  </div>
-                  <div>
-                    <h2 className="text-xl font-bold text-gray-900">Chat with Frankie</h2>
-                    <p className="text-sm text-gray-500">Get insights about your cat's analysis</p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => {
-                    // Store analysis data in sessionStorage for the chat page
-                    sessionStorage.setItem('analysisForChat', JSON.stringify(result));
-                    router.push(`/chat/${result.chat_session_id}`);
-                  }}
-                  className="px-6 py-2 bg-indigo-600 text-white font-semibold rounded-lg
-                    hover:bg-indigo-700 transition-colors duration-200"
-                >
-                  Open Chat
-                </button>
+        {/* Error Display */}
+        {error && (
+          <Card className="p-6 border-destructive bg-destructive/10">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="h-5 w-5 text-destructive mt-0.5" />
+              <div className="flex-1">
+                <h3 className="font-semibold text-destructive mb-1">Error</h3>
+                <p className="text-sm text-destructive/80">{error}</p>
               </div>
             </div>
-          )}
-        </div>
+          </Card>
+        )}
+
+        {/* Results Display */}
+        {result && (
+          <Card className="p-6 space-y-4">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="h-5 w-5 text-primary" />
+              <h2 className="text-2xl font-bold text-foreground">Analysis Results</h2>
+            </div>
+            <div className="p-4 bg-muted rounded-lg border">
+              <MarkdownRenderer content={result.analysis_text} />
+            </div>
+          </Card>
+        )}
+
+        {/* Open Chat Button */}
+        {result && result.chat_session_id && isAuthenticated && (
+          <Card className="p-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-primary rounded-full flex items-center justify-center">
+                  <span className="text-primary-foreground font-bold text-lg">F</span>
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-foreground">Chat with Frankie</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Get insights about your cat's analysis
+                  </p>
+                </div>
+              </div>
+              <Button
+                onClick={() => {
+                  sessionStorage.setItem('analysisForChat', JSON.stringify(result));
+                  router.push(`/chat/${result.chat_session_id}`);
+                }}
+                size="lg"
+              >
+                <MessageSquare className="mr-2 h-4 w-4" />
+                Open Chat
+              </Button>
+            </div>
+          </Card>
+        )}
+
+        {/* Sign in prompt */}
+        {result && !isAuthenticated && (
+          <Card className="p-6 bg-primary/5 border-primary/20">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold text-foreground mb-1">
+                  Want to save your chat history?
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  Sign in to continue conversations about your cat's analysis and access your analysis history.
+                </p>
+              </div>
+              <Link href="/login">
+                <Button size="lg">
+                  Sign In
+                </Button>
+              </Link>
+            </div>
+          </Card>
+        )}
       </div>
-    </div>
+    </DashboardLayout>
   );
 }
-

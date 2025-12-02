@@ -2,10 +2,17 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { getChatMessages, sendChatMessage } from '@/lib/api';
-import { DetectionResponse, ChatMessage, ChatMessageRequest } from '@/types/api';
+import { ImageAnalysisResponse, ChatMessage, ChatMessageRequest } from '@/types/api';
+import { DashboardLayout } from '@/components/layouts/DashboardLayout';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card } from '@/components/ui/card';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { MarkdownRenderer } from '@/components/MarkdownRenderer';
+import { Loader2, Send, MessageSquare } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function ChatPage() {
   const { user, isAuthenticated, loading: authLoading } = useAuth();
@@ -18,7 +25,7 @@ export default function ChatPage() {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [analysisData, setAnalysisData] = useState<DetectionResponse | null>(null);
+  const [analysisData, setAnalysisData] = useState<ImageAnalysisResponse | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const hasSentInitialMessage = useRef(false);
 
@@ -40,7 +47,7 @@ export default function ChatPage() {
       try {
         const parsed = JSON.parse(storedAnalysis);
         setAnalysisData(parsed);
-        sessionStorage.removeItem('analysisForChat'); // Clear after reading
+        sessionStorage.removeItem('analysisForChat');
       } catch (e) {
         console.error('Failed to parse analysis data:', e);
       }
@@ -76,55 +83,10 @@ export default function ChatPage() {
     }
   };
 
-  const formatAnalysisForMessage = (analysis: DetectionResponse): string => {
-    const parts: string[] = [];
-
-    // Detections
-    if (analysis.detections.length > 0) {
-      parts.push('=== Detected Body Parts ===');
-      analysis.detections.forEach((det, idx) => {
-        parts.push(
-          `${idx + 1}. ${det.class_name.toUpperCase()} (confidence: ${(det.confidence * 100).toFixed(1)}%)`
-        );
-        parts.push(`   Bounding box: [${det.bbox.join(', ')}]`);
-      });
-    } else {
-      parts.push('=== No body parts detected ===');
-    }
-
-    // Analysis
-    if (analysis.analysis) {
-      parts.push('\n=== Body Part Analysis ===');
-      const analysisResult = analysis.analysis;
-      
-      if (analysisResult.eye_state) {
-        parts.push(`Eyes: ${analysisResult.eye_state}`);
-      }
-      if (analysisResult.mouth_state) {
-        parts.push(`Mouth: ${analysisResult.mouth_state}`);
-      }
-      if (analysisResult.tail_position) {
-        parts.push(`Tail Position: ${analysisResult.tail_position}`);
-        if (analysisResult.tail_angle !== null) {
-          parts.push(`Tail Angle: ${analysisResult.tail_angle.toFixed(1)}°`);
-        }
-      }
-    }
-
-    // Emotion
-    if (analysis.emotion) {
-      parts.push(`\n=== Emotional State ===`);
-      parts.push(`Emotion: ${analysis.emotion.toUpperCase()}`);
-    }
-
-    return parts.join('\n');
-  };
-
   const sendInitialAnalysisMessage = async () => {
     if (!analysisData) return;
 
-    const analysisText = formatAnalysisForMessage(analysisData);
-    const messageContent = `Here are my image analysis results:\n\n${analysisText}`;
+    const messageContent = `Here are my image analysis results:\n\n${analysisData.analysis_text}`;
 
     // Optimistically add user message to UI immediately
     const optimisticUserMessage: ChatMessage = {
@@ -148,7 +110,6 @@ export default function ChatPage() {
       const aiResponse = await sendChatMessage(messageRequest);
       
       // Reload messages to get the actual user message (with real ID) and AI response
-      // This replaces the optimistic message with the real one
       await loadMessages();
     } catch (err) {
       // Remove optimistic message on error
@@ -191,7 +152,6 @@ export default function ChatPage() {
       const aiResponse = await sendChatMessage(messageRequest);
       
       // Reload messages to get the actual user message (with real ID) and AI response
-      // This replaces the optimistic message with the real one
       await loadMessages();
     } catch (err) {
       // Remove optimistic message on error
@@ -205,126 +165,120 @@ export default function ChatPage() {
 
   if (authLoading || loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-xl font-semibold text-gray-700">Loading...</div>
+      <DashboardLayout>
+        <div className="max-w-4xl mx-auto space-y-4">
+          <Skeleton className="h-12 w-64" />
+          <Skeleton className="h-96 w-full" />
         </div>
-      </div>
+      </DashboardLayout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex flex-col">
-      {/* Header */}
-      <div className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-4xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Link
-                href="/"
-                className="text-indigo-600 hover:text-indigo-700 font-semibold"
-              >
-                ← Back to Home
-              </Link>
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-indigo-600 rounded-full flex items-center justify-center">
-                  <span className="text-white font-bold text-lg">F</span>
-                </div>
-                <div>
-                  <h1 className="text-xl font-bold text-gray-900">Chat with Frankie</h1>
-                  <p className="text-sm text-gray-500">Your AI cat health assistant</p>
-                </div>
-              </div>
+    <DashboardLayout>
+      <div className="max-w-4xl mx-auto flex flex-col" style={{ minHeight: 'calc(100vh - 12rem)' }}>
+        {/* Header */}
+        <div className="mb-6 space-y-2">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center">
+              <span className="text-primary-foreground font-bold text-lg">F</span>
             </div>
-            {user && (
-              <div className="text-sm text-gray-600">
-                <span className="font-medium">{user.email}</span>
-              </div>
-            )}
+            <div>
+              <h1 className="text-3xl font-bold text-foreground">Chat with Frankie</h1>
+              <p className="text-sm text-muted-foreground">Your AI cat health assistant</p>
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Messages Container */}
-      <div className="flex-1 overflow-y-auto max-w-4xl w-full mx-auto px-4 py-6">
-        <div className="space-y-4">
-          {messages.length === 0 && !sending && !error && (
-            <div className="text-center text-gray-500 py-8">
-              {analysisData ? 'Sending analysis results...' : 'Start a conversation with Frankie!'}
-            </div>
-          )}
+        {/* Messages Container */}
+        <ScrollArea className="flex-1 mb-4">
+          <div className="space-y-4 pr-4">
+            {messages.length === 0 && !sending && !error && (
+              <div className="text-center py-12 text-muted-foreground">
+                <MessageSquare className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p>{analysisData ? 'Sending analysis results...' : 'Start a conversation with Frankie!'}</p>
+              </div>
+            )}
 
-          {messages.map((message) => (
-            <div
-              key={message.id}
-              className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
-            >
+            {messages.map((message) => (
               <div
-                className={`max-w-[80%] rounded-lg px-4 py-2 ${
-                  message.sender === 'user'
-                    ? 'bg-indigo-600 text-white rounded-tr-none'
-                    : 'bg-white text-gray-900 rounded-tl-none shadow-sm border border-gray-200'
-                }`}
+                key={message.id}
+                className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
               >
-                <p className="text-sm whitespace-pre-wrap">{message.content}</p>
-                <p className={`text-xs mt-1 ${
-                  message.sender === 'user' ? 'text-indigo-200' : 'text-gray-400'
-                }`}>
-                  {new Date(message.created_at).toLocaleTimeString()}
-                </p>
+                <Card
+                  className={`max-w-[80%] ${
+                    message.sender === 'user'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-card'
+                  }`}
+                >
+                  <div className="px-4 py-3">
+                    {message.sender === 'assistant' ? (
+                      <MarkdownRenderer content={message.content} />
+                    ) : (
+                      <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                    )}
+                    <p className={`text-xs mt-2 ${
+                      message.sender === 'user' ? 'text-primary-foreground/70' : 'text-muted-foreground'
+                    }`}>
+                      {new Date(message.created_at).toLocaleTimeString()}
+                    </p>
+                  </div>
+                </Card>
               </div>
-            </div>
-          ))}
+            ))}
 
-          {sending && (
-            <div className="flex justify-start">
-              <div className="bg-white text-gray-900 rounded-lg px-4 py-2 rounded-tl-none shadow-sm border border-gray-200">
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
+            {sending && (
+              <div className="flex justify-start">
+                <Card>
+                  <div className="px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                      <span className="text-sm text-muted-foreground">Frankie is typing...</span>
+                    </div>
+                  </div>
+                </Card>
+              </div>
+            )}
+
+            {error && (
+              <Card className="border-destructive bg-destructive/10">
+                <div className="px-4 py-3">
+                  <p className="text-destructive font-medium text-sm">Error:</p>
+                  <p className="text-destructive/80 text-sm">{error}</p>
                 </div>
-              </div>
-            </div>
-          )}
+              </Card>
+            )}
 
-          {error && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-              <p className="text-red-800 font-medium">Error:</p>
-              <p className="text-red-600 text-sm">{error}</p>
-            </div>
-          )}
+            <div ref={messagesEndRef} />
+          </div>
+        </ScrollArea>
 
-          <div ref={messagesEndRef} />
-        </div>
-      </div>
-
-      {/* Input Form */}
-      <div className="bg-white border-t border-gray-200">
-        <div className="max-w-4xl mx-auto px-4 py-4">
+        {/* Input Form */}
+        <Card className="p-4">
           <form onSubmit={handleSendMessage} className="flex gap-2">
-            <input
+            <Input
               type="text"
               value={inputMessage}
               onChange={(e) => setInputMessage(e.target.value)}
               placeholder="Type your message..."
-              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
               disabled={sending}
+              className="flex-1"
             />
-            <button
+            <Button
               type="submit"
               disabled={!inputMessage.trim() || sending}
-              className="px-6 py-2 bg-indigo-600 text-white font-semibold rounded-lg
-                hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500
-                focus:ring-offset-2 disabled:bg-gray-400 disabled:cursor-not-allowed
-                transition-colors duration-200"
+              size="icon"
             >
-              Send
-            </button>
+              {sending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4" />
+              )}
+            </Button>
           </form>
-        </div>
+        </Card>
       </div>
-    </div>
+    </DashboardLayout>
   );
 }
-
