@@ -1,86 +1,95 @@
 """Image analysis service for database operations"""
 import json
+import base64
 import numpy as np
 from typing import Optional, List, Dict, Any, Tuple
 from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
-from body_part_analysis import EyeAnalyzer, MouthAnalyzer, TailAnalyzer, CatEmotionAnalyzer
-from services.image_service import extract_roi
+from anthropic import Anthropic
+from core.config import ANTHROPIC_API_KEY, CLAUDE_MODEL, CLAUDE_TEMPERATURE, IMAGE_ANALYSIS_SYSTEM_PROMPT
 from models.db_models import ImageAnalysis, ChatSession
 from models.schemas import BodyPartDetection, AnalysisResult, ImageAnalysisHistoryItem, UserAnalysesResponse
 from services.chat_service import ChatService
+
+
+# Initialize Claude client for image analysis
+claude_client = Anthropic(api_key=ANTHROPIC_API_KEY) if ANTHROPIC_API_KEY else None
 
 
 class ImageAnalysisService:
     """Service for all image analysis operations (business logic and database)"""
     
     @staticmethod
-    def analyze_body_parts(
-        image: np.ndarray,
-        detections: list
-    ) -> Tuple[AnalysisResult, Optional[str]]:
+    async def analyze_image_with_claude(
+        image_bytes: bytes
+    ) -> str:
         """
-        Analyze detected body parts and determine emotional state
-        
-        This is the core business logic for analyzing cat body parts.
+        Analyze cat image using Claude vision API
         
         Args:
-            image: Input image (BGR format)
-            detections: List of detections from DetectionService
+            image_bytes: Image file bytes
             
         Returns:
-            Tuple of (AnalysisResult, emotion)
+            Text analysis of the cat image
         """
-        # Organize detections by class
-        eyes = [d for d in detections if d["class"] == "eye"]
-        mouths = [d for d in detections if d["class"] == "mouth"]
-        tails = [d for d in detections if d["class"] == "tail"]
+        if not claude_client:
+            raise Exception("ANTHROPIC_API_KEY not set. Please set the ANTHROPIC_API_KEY environment variable.")
         
-        analysis_result = AnalysisResult()
+        # Convert image to base64
+        image_base64 = base64.b64encode(image_bytes).decode('utf-8')
         
-        # Analyze eyes
-        if eyes:
-            eye_detection = max(eyes, key=lambda x: x["confidence"])
-            eye_roi = extract_roi(image, eye_detection["bbox"])
-            if eye_roi is not None:
-                analysis_result.eye_state = EyeAnalyzer.analyze_eye(eye_roi)
+        # Determine image media type (assume JPEG, but could detect from bytes)
+        # For simplicity, we'll use image/jpeg. Could be enhanced to detect actual format
+        media_type = "image/jpeg"
         
-        # Analyze mouth
-        if mouths:
-            mouth_detection = max(mouths, key=lambda x: x["confidence"])
-            mouth_roi = extract_roi(image, mouth_detection["bbox"])
-            if mouth_roi is not None:
-                analysis_result.mouth_state = MouthAnalyzer.analyze_mouth(mouth_roi)
-        
-        # Analyze tail
-        if tails:
-            tail_detection = max(tails, key=lambda x: x["confidence"])
-            tail_roi = extract_roi(image, tail_detection["bbox"])
-            if tail_roi is not None:
-                tail_analysis = TailAnalyzer.detect_tail(tail_roi)
-                analysis_result.tail_position = tail_analysis["position"]
-                analysis_result.tail_angle = tail_analysis["angle"]
-        
-        # Determine emotion
-        emotion = None
-        if analysis_result.eye_state and analysis_result.mouth_state and analysis_result.tail_position:
-            emotion = CatEmotionAnalyzer.determine_emotion(
-                analysis_result.eye_state,
-                analysis_result.mouth_state,
-                analysis_result.tail_position
+        try:
+            # Call Claude API with vision
+            message = claude_client.messages.create(
+                model=CLAUDE_MODEL,
+                max_tokens=1024,
+                temperature=CLAUDE_TEMPERATURE,
+                system=IMAGE_ANALYSIS_SYSTEM_PROMPT,
+                messages=[
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "image",
+                                "source": {
+                                    "type": "base64",
+                                    "media_type": media_type,
+                                    "data": image_base64
+                                }
+                            },
+                            {
+                                "type": "text",
+                                "text": "Please analyze this cat image and provide the body language analysis."
+                            }
+                        ]
+                    }
+                ]
             )
-        
-        return analysis_result, emotion
+            
+            # Extract text from response
+            response_text = message.content[0].text
+            return response_text
+            
+        except Exception as e:
+            raise Exception(f"Failed to get Claude response: {str(e)}")
+    
+    # Keep old method name for backward compatibility
+    @staticmethod
+    async def analyze_image_with_ollama(image_bytes: bytes) -> str:
+        """Deprecated: Use analyze_image_with_claude instead"""
+        return await ImageAnalysisService.analyze_image_with_claude(image_bytes)
     
     @staticmethod
     async def save_analysis(
         db: AsyncSession,
         filename: str,
-        detections: List[BodyPartDetection],
-        analysis_result: Optional[AnalysisResult],
-        user_id: Optional[UUID] = None,
-        emotion: Optional[str] = None
+        analysis_text: str,
+        user_id: Optional[UUID] = None
     ) -> Tuple[ImageAnalysis, Optional[ChatSession]]:
         """
         Save image analysis to database
@@ -88,12 +97,11 @@ class ImageAnalysisService:
         Args:
             db: Database session
             filename: Original filename
-            detections: List of detected body parts
-            analysis_result: Analysis result object
+            analysis_text: Text analysis from Ollama
             user_id: Optional user ID to link the analysis
             
         Returns:
-            Saved ImageAnalysis database model
+            Tuple of (Saved ImageAnalysis, ChatSession if created)
         """
         # Log user information for debugging
         if user_id:
@@ -101,23 +109,33 @@ class ImageAnalysisService:
         else:
             print("ImageAnalysisService: Saving analysis without user_id (user not authenticated)")
         
-        analysis_record = ImageAnalysis(
-            filename=filename,
-            detections=[d.model_dump() for d in detections],
-            analysis_result=json.dumps(analysis_result.model_dump(), indent=2) if analysis_result else None,
-            emotion=emotion,
-            user_id=user_id
-        )
-        db.add(analysis_record)
-        await db.commit()
-        await db.refresh(analysis_record)
-        print(f"ImageAnalysisService: Successfully saved analysis with id: {analysis_record.id}, user_id: {analysis_record.user_id}")
-        
-        # Create chat session if user is authenticated
+        # Create chat session first if user is authenticated (so we can link it)
         chat_session = None
         if user_id:
             chat_session = await ChatService.create_session(
                 user_id=user_id,
+                db=db
+            )
+        
+        analysis_record = ImageAnalysis(
+            filename=filename,
+            detections=None,  # No longer using detections
+            analysis_result=analysis_text,  # Store plain text
+            emotion=None,  # No longer extracting emotion separately
+            user_id=user_id,
+            chat_session_id=chat_session.id if chat_session else None
+        )
+        db.add(analysis_record)
+        await db.commit()
+        await db.refresh(analysis_record)
+        print(f"ImageAnalysisService: Successfully saved analysis with id: {analysis_record.id}, user_id: {analysis_record.user_id}, chat_session_id: {analysis_record.chat_session_id}")
+        
+        # Save analysis as first AI message in chat session
+        if chat_session:
+            await ChatService.save_message(
+                session_id=chat_session.id,
+                sender="assistant",
+                content=analysis_text,
                 db=db
             )
 
@@ -241,20 +259,30 @@ class ImageAnalysisService:
                         for det in analysis.detections
                     ]
             
-            # Parse analysis_result from JSON string
+            # Parse analysis_result - can be either JSON (old format) or plain text (new format)
             analysis_result = None
             if analysis.analysis_result:
                 try:
+                    # Try to parse as JSON first (for backward compatibility with old records)
                     if isinstance(analysis.analysis_result, str):
-                        analysis_data = json.loads(analysis.analysis_result)
+                        try:
+                            analysis_data = json.loads(analysis.analysis_result)
+                            analysis_result = AnalysisResult(**analysis_data)
+                        except json.JSONDecodeError:
+                            # If it's not JSON, it's plain text (new format)
+                            # For backward compatibility, we'll set it to None since AnalysisResult expects structured data
+                            analysis_result = None
                     else:
                         analysis_data = analysis.analysis_result
-                    analysis_result = AnalysisResult(**analysis_data)
+                        analysis_result = AnalysisResult(**analysis_data)
                 except (json.JSONDecodeError, Exception) as e:
                     print(f"Error parsing analysis_result: {e}")
             
             # Get emotion from database (now stored separately)
             emotion = analysis.emotion
+            
+            # Get chat_session_id if it exists
+            chat_session_id = str(analysis.chat_session_id) if analysis.chat_session_id else None
             
             formatted_analyses.append(
                 ImageAnalysisHistoryItem(
@@ -263,6 +291,7 @@ class ImageAnalysisService:
                     detections=detections,
                     analysis=analysis_result,
                     emotion=emotion,
+                    chat_session_id=chat_session_id,
                     created_at=analysis.created_at.isoformat() if analysis.created_at else ""
                 )
             )

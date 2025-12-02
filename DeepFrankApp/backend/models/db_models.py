@@ -28,11 +28,13 @@ class ImageAnalysis(Base):
     analysis_result = Column(Text, nullable=True)  # Store analysis text
     emotion = Column(String, nullable=True)  # Store detected emotion
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True, index=True)
+    chat_session_id = Column(UUID(as_uuid=True), ForeignKey("chat_sessions.id"), nullable=True, index=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     
-    # Relationship to user
+    # Relationships
     user = relationship("User")
+    chat_session = relationship("ChatSession")
 
 class ChatSession(Base):
     """Model for storing chat session information"""
