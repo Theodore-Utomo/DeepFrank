@@ -64,7 +64,7 @@ class ImageAnalysisService:
                             },
                             {
                                 "type": "text",
-                                "text": "Please analyze this cat image and provide the body language analysis."
+                                "text": "Please analyze this cat image and provide the body language analysis. I think my cat is sick and I want to know if it is."
                             }
                         ]
                     }
