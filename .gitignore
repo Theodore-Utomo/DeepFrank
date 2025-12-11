@@ -1,4 +1,3 @@
-# Image files
 *.jpg
 *.jpeg
 *.png
@@ -10,13 +9,10 @@
 *.tiff
 *.tif
 
-# MATLAB files
 *.mat
 
-# Markdown files
 *.md
 
-# Python
 __pycache__/
 *.py[cod]
 *$py.class
@@ -43,7 +39,6 @@ env/
 ENV/
 .venv
 
-# Node.js
 node_modules/
 npm-debug.log*
 yarn-debug.log*
@@ -54,14 +49,11 @@ out/
 build/
 dist/
 
-# Environment variables
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
 
-# IDE
+.env
+
+
+
 .vscode/
 .idea/
 *.swp
@@ -69,25 +61,20 @@ dist/
 *~
 .DS_Store
 
-# Docker
-.dockerignore
 
-# ONNX model files (if too large)
-# Uncomment if you don't want to commit the model
 # *.onnx
 
-# Data directories with images and labels
 Data/cat_images/
 Data/dog_images/
 Data/cat_labels/
 Data/cat_body_parts_dataset/
 Data/images_unlabelled/
 
-# Logs
+
 *.log
 logs/
 
-# OS
+
 Thumbs.db
 .DS_Store
 
