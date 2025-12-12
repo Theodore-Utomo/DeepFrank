@@ -2,6 +2,8 @@
 
 DeepFrank is a full-stack web application for analyzing cat emotions and providing insights about cat health and behavior. The app uses AI to analyze cat images and provides a chat interface for discussing your cat's emotional state.
 
+For a detailed reflection on the project development process, challenges, and learnings, see [reflection.txt](reflection.txt).
+
 ## Features
 
 - 🐱 **Image Analysis**: Upload cat images for emotional state analysis
