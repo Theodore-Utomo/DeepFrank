@@ -63,6 +63,7 @@ What I wish I did better:
 
 3. Evaluation metrics: Another thing is I could have tried to come up with better ways to evaluate the Claude approach, though that's tricky since emotional state is pretty subjective.
 
+4. Vet and Products Section: I had a bit of trouble trying out different APIs to get a section that recommended Vets and Products, so the UI is a little weird and doesn't always work, I wish I did better on that. 
 
 [0.2 pt] What's your self-evaluation for code and report? A, B, C, or D? Why?
 
