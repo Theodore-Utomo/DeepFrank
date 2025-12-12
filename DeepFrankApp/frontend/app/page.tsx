@@ -7,6 +7,7 @@ import { analyzeImage } from '@/lib/api';
 import { ImageAnalysisResponse } from '@/types/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { MarkdownRenderer } from '@/components/MarkdownRenderer';
+import { BoundingBoxOverlay } from '@/components/BoundingBoxOverlay';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -134,24 +135,48 @@ export default function Home() {
               {preview ? (
                 <div className="space-y-4" onClick={(e) => e.stopPropagation()}>
                   <div className="relative inline-block">
-                    <img
-                      src={preview}
-                      alt="Preview"
-                      className="max-w-full h-auto max-h-96 rounded-lg shadow-lg"
-                    />
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setPreview(null);
-                        setSelectedFile(null);
-                        setResult(null);
-                      }}
-                      className="absolute top-2 right-2 p-2 bg-background/80 backdrop-blur-sm rounded-full hover:bg-background transition-colors"
-                    >
-                      <span className="sr-only">Remove image</span>
-                      ×
-                    </button>
+                    {result && result.detections && result.detections.length > 0 ? (
+                      <div className="relative">
+                        <BoundingBoxOverlay
+                          imageSrc={preview}
+                          detections={result.detections}
+                        />
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setPreview(null);
+                            setSelectedFile(null);
+                            setResult(null);
+                          }}
+                          className="absolute top-2 right-2 p-2 bg-background/80 backdrop-blur-sm rounded-full hover:bg-background transition-colors z-10"
+                        >
+                          <span className="sr-only">Remove image</span>
+                          ×
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="relative">
+                        <img
+                          src={preview}
+                          alt="Preview"
+                          className="max-w-full h-auto max-h-96 rounded-lg shadow-lg"
+                        />
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setPreview(null);
+                            setSelectedFile(null);
+                            setResult(null);
+                          }}
+                          className="absolute top-2 right-2 p-2 bg-background/80 backdrop-blur-sm rounded-full hover:bg-background transition-colors"
+                        >
+                          <span className="sr-only">Remove image</span>
+                          ×
+                        </button>
+                      </div>
+                    )}
                   </div>
                   <p className="text-sm text-muted-foreground">
                     {selectedFile?.name}
@@ -223,7 +248,35 @@ export default function Home() {
         )}
 
         {/* Results Display */}
-        {result && (
+        {result && result.detections !== null && result.detections !== undefined && (
+          <Card className="p-6 space-y-4">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="h-5 w-5 text-primary" />
+              <h2 className="text-2xl font-bold text-foreground">Detection Results</h2>
+            </div>
+            <div className="p-4 bg-muted rounded-lg border">
+              {result.detections.length > 0 ? (
+                <>
+                  <p className="text-sm text-muted-foreground mb-2">
+                    Found {result.detections.length} detection{result.detections.length !== 1 ? 's' : ''}:
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {result.detections.map((detection, index) => (
+                      <Badge key={index} variant="secondary" className="text-sm">
+                        {detection.class_name} ({(detection.confidence * 100).toFixed(1)}%)
+                      </Badge>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  No detections found in this image. Try a different image or check if the image contains a cat.
+                </p>
+              )}
+            </div>
+          </Card>
+        )}
+        {result && result.analysis_text && (
           <Card className="p-6 space-y-4">
             <div className="flex items-center gap-2">
               <CheckCircle2 className="h-5 w-5 text-primary" />
@@ -236,7 +289,7 @@ export default function Home() {
         )}
 
         {/* Open Chat Button */}
-        {result && result.chat_session_id && isAuthenticated && (
+        {result && result.chat_session_id && isAuthenticated && result.analysis_text && (
           <Card className="p-6">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">

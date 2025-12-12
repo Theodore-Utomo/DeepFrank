@@ -3,7 +3,7 @@ from typing import Optional
 from fastapi import UploadFile, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from services.image_service import bytes_to_cv2_image
-from services.image_analysis_service import ImageAnalysisService
+from services.detection_service import get_detection_service
 from models.schemas import ImageAnalysisResponse
 from models.db_models import User
 
@@ -45,32 +45,24 @@ class ImageProcessingService:
         if image is None:
             raise HTTPException(status_code=400, detail="Could not decode image")
         
-        # Analyze using Claude
+        # Run YOLOv8 detection
         try:
-            analysis_text = await ImageAnalysisService.analyze_image_with_claude(image_bytes)
+            detection_service = get_detection_service()
+            detections = detection_service.detect(image)
+            print(f"Detection completed: {len(detections)} detections found")
         except Exception as e:
+            import traceback
+            error_trace = traceback.format_exc()
+            print(f"Detection error: {str(e)}")
+            print(f"Traceback: {error_trace}")
             raise HTTPException(
                 status_code=500,
-                detail=f"Error analyzing image with Ollama: {str(e)}"
+                detail=f"Error running detection: {str(e)}"
             )
         
-        # Save to database and create chat session (optional - wrapped in try/except to not fail if DB is unavailable)
-        chat_session_id = None
-        try:
-            if db:
-                analysis_record, chat_session = await ImageAnalysisService.save_analysis(
-                    db=db,
-                    filename=file.filename or "unknown",
-                    analysis_text=analysis_text,
-                    user_id=user.id if user else None
-                )
-                if chat_session:
-                    chat_session_id = str(chat_session.id)
-        except Exception as db_error:
-            print(f"Warning: Failed to save to database: {db_error}")
-        
         return ImageAnalysisResponse(
-            analysis_text=analysis_text,
-            chat_session_id=chat_session_id
+            analysis_text=None,
+            detections=detections,
+            chat_session_id=None
         )
 

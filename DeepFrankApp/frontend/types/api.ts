@@ -23,7 +23,8 @@ export interface DetectionResponse {
 }
 
 export interface ImageAnalysisResponse {
-  analysis_text: string;
+  analysis_text: string | null;
+  detections: BodyPartDetection[] | null;
   chat_session_id: string | null;
 }
 

@@ -130,5 +130,6 @@ class ChatMessageResponse(BaseModel):
 
 class ImageAnalysisResponse(BaseModel):
     """Response model for image analysis endpoint"""
-    analysis_text: str
+    analysis_text: Optional[str] = None
+    detections: Optional[List[BodyPartDetection]] = None
     chat_session_id: Optional[str] = None
