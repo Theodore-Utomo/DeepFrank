@@ -205,7 +205,6 @@ class ChatService:
         Raises:
             HTTPException: If session not found or user doesn't own session
         """
-        # Verify session exists and belongs to user
         session = await ChatService.get_session(message_request.session_id, db)
         if session.user_id != user_id:
             raise HTTPException(
@@ -213,7 +212,6 @@ class ChatService:
                 detail="You don't have access to this chat session"
             )
         
-        # Save user message to database
         user_message = await ChatService.save_message(
             session_id=message_request.session_id,
             sender="user",
@@ -221,7 +219,7 @@ class ChatService:
             db=db
         )
         
-        # Get conversation history from database (excluding the message we just added)
+        # Get conversation history (excluding the message we just added)
         db_messages = await ChatService.get_session_messages(
             message_request.session_id,
             db
@@ -232,29 +230,21 @@ class ChatService:
             [msg for msg in db_messages if msg.id != user_message.id]
         )
         
-        # Create user message for LangChain
         user_langchain_message = HumanMessage(content=message_request.content)
         
-        # Get AI response using LangGraph workflow
         # Use session_id as thread_id for conversation continuity
         config = {"configurable": {"thread_id": str(message_request.session_id)}}
         
         try:
-            # Build full conversation history for the workflow
             # Since InMemorySaver is in-memory only, we load from database each time
             # and pass the full conversation to the workflow
             if previous_messages:
-                # We have previous messages - include system prompt and full history
                 all_messages = [SystemMessage(content=CHAT_SYSTEM_PROMPT)] + previous_messages + [user_langchain_message]
             else:
-                # First message - workflow will add system prompt if needed
                 all_messages = [user_langchain_message]
             
-            # Get AI response using invoke
-            # Pass full conversation history so workflow has context
             response = workflow.invoke(all_messages, config)
             
-            # Extract content from response
             if hasattr(response, 'content'):
                 ai_response_content = response.content
             elif isinstance(response, dict) and 'value' in response:
@@ -272,7 +262,6 @@ class ChatService:
                 detail=f"Failed to get AI response: {str(e)}"
             )
         
-        # Save AI response to database
         ai_message = await ChatService.save_message(
             session_id=message_request.session_id,
             sender="assistant",
@@ -280,7 +269,6 @@ class ChatService:
             db=db
         )
         
-        # Return AI response
         return ChatMessageResponse(
             id=str(ai_message.id),
             session_id=str(ai_message.session_id),

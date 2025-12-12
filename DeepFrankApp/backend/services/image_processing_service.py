@@ -1,11 +1,10 @@
 """Image processing service for handling image uploads and analysis"""
-from typing import Optional, Tuple
+from typing import Optional
 from fastapi import UploadFile, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from services.detection_service import DetectionService
 from services.image_service import bytes_to_cv2_image
 from services.image_analysis_service import ImageAnalysisService
-from models.schemas import DetectionResponse, BodyPartDetection
+from models.schemas import ImageAnalysisResponse
 from models.db_models import User
 
 
@@ -15,23 +14,21 @@ class ImageProcessingService:
     @staticmethod
     async def analyze_image_file(
         file: UploadFile,
-        detector: DetectionService,
         db: AsyncSession,
         user: Optional[User] = None
-    ) -> DetectionResponse:
+    ) -> ImageAnalysisResponse:
         """
-        Process uploaded image file and perform analysis
+        Process uploaded image file and perform analysis using Ollama
         
         This is the main business logic for image analysis.
         
         Args:
             file: Uploaded file
-            detector: Detection service instance
             db: Database session
             user: Optional authenticated user
             
         Returns:
-            DetectionResponse with detections, analysis, and emotion
+            ImageAnalysisResponse with analysis text and chat session ID
             
         Raises:
             HTTPException: If file is invalid or processing fails
@@ -40,55 +37,40 @@ class ImageProcessingService:
         if not file.content_type or not file.content_type.startswith('image/'):
             raise HTTPException(status_code=400, detail="File must be an image")
         
-        # Read and decode image
+        # Read image bytes
         image_bytes = await file.read()
-        image = bytes_to_cv2_image(image_bytes)
         
+        # Validate image can be decoded (basic validation)
+        image = bytes_to_cv2_image(image_bytes)
         if image is None:
             raise HTTPException(status_code=400, detail="Could not decode image")
         
-        # Detect body parts
-        detections = detector.detect(image)
-        
-        # Analyze body parts and determine emotion
-        analysis_result, emotion = ImageAnalysisService.analyze_body_parts(image, detections)
-        
-        # Format detections for response
-        formatted_detections = [
-            BodyPartDetection(
-                class_name=d["class"],
-                confidence=d["confidence"],
-                bbox=d["bbox"]
+        # Analyze using Claude
+        try:
+            analysis_text = await ImageAnalysisService.analyze_image_with_claude(image_bytes)
+        except Exception as e:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Error analyzing image with Ollama: {str(e)}"
             )
-            for d in detections
-        ]
         
-        # Build response
-        result = DetectionResponse(
-            detections=formatted_detections,
-            analysis=analysis_result,
-            emotion=emotion
-        )
-        
-        # Save to database (optional - wrapped in try/except to not fail if DB is unavailable)
+        # Save to database and create chat session (optional - wrapped in try/except to not fail if DB is unavailable)
         chat_session_id = None
         try:
-            analysis_record, chat_session = await ImageAnalysisService.save_analysis(
-                db=db,
-                filename=file.filename or "unknown",
-                detections=formatted_detections,
-                analysis_result=analysis_result,
-                user_id=user.id if user else None,
-                emotion=emotion
-            )
-            if chat_session:
-                chat_session_id = str(chat_session.id)
+            if db:
+                analysis_record, chat_session = await ImageAnalysisService.save_analysis(
+                    db=db,
+                    filename=file.filename or "unknown",
+                    analysis_text=analysis_text,
+                    user_id=user.id if user else None
+                )
+                if chat_session:
+                    chat_session_id = str(chat_session.id)
         except Exception as db_error:
-            # Log but don't fail the request if database save fails
             print(f"Warning: Failed to save to database: {db_error}")
         
-        # Add chat session ID to response
-        result.chat_session_id = chat_session_id
-        
-        return result
+        return ImageAnalysisResponse(
+            analysis_text=analysis_text,
+            chat_session_id=chat_session_id
+        )
 

@@ -89,16 +89,13 @@ class AuthService:
             Dictionary with session_token, user_id, and user info
         """
         try:
-            # Log token for debugging (first 20 chars only for security)
             print(f"Attempting to authenticate magic link token: {token[:20]}...")
             print(f"Full token length: {len(token)}")
             print(f"Token starts with: {token[:5]}...")
             
-            # Try to authenticate the magic link token
-            # Note: session_duration_minutes is required to create a session
             response = self.client.magic_links.authenticate(
                 token=token,
-                session_duration_minutes=60 * 24 * 7  # 7 days session
+                session_duration_minutes=60 * 24 * 7 
             )
             
             if not response.session_token:
@@ -106,7 +103,6 @@ class AuthService:
             
             print(f"Successfully authenticated magic link for user: {response.user_id}")
             
-            # Extract emails from response
             emails = []
             if hasattr(response, 'emails') and response.emails:
                 emails = [email.email for email in response.emails]
@@ -157,7 +153,6 @@ class AuthService:
                     f"Details: {error_str}"
                 )
             
-            # Extract more user-friendly error messages from Stytch errors
             if 'already used' in error_str or 'expired' in error_str or 'unable_to_auth_magic_link' in error_str:
                 raise ValueError("This magic link has already been used or has expired. Please request a new one.")
             elif 'invalid' in error_str.lower():
@@ -187,7 +182,6 @@ class AuthService:
             elif hasattr(response, 'user') and hasattr(response.user, 'user_id'):
                 user_id = response.user.user_id
             
-            # Extract emails
             emails = []
             if hasattr(response, 'emails') and response.emails:
                 emails = [email.email for email in response.emails]
@@ -281,7 +275,6 @@ class AuthService:
         """
         print(f"Received authentication request with token length: {len(token)}")
         
-        # Authenticate with Stytch
         auth_data = self.authenticate_magic_link(token)
         stytch_user_id = auth_data["stytch_user_id"]
         emails = auth_data["user"]["emails"]
@@ -303,10 +296,8 @@ class AuthService:
         
         email = emails[0]
         
-        # Get or create user in database
         user = await UserService.get_or_create_user(db, stytch_user_id, email)
         
-        # Build and return response
         return AuthResponse(
             session_token=auth_data["session_token"],
             user=UserResponse(

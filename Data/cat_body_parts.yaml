@@ -1,18 +1,12 @@
-# Cat Body Parts Dataset Configuration
-# Dataset structure follows the cat_body_parts_dataset/ layout
 
-# Path to dataset root directory
 path: Data/cat_body_parts_dataset
 
-# Train, validation, and test image directories (relative to dataset root)
 train: images/train
 val: images/val
 test: images/test
 
-# Number of classes
 nc: 3
 
-# Class names (must match the order in classes.txt)
 names:
   0: eye
   1: mouth
