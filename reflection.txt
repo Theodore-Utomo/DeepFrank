@@ -1,0 +1,79 @@
+Reflection: DeepFrank Project
+Theodore Utomo
+
+================================================================================
+
+[0.2 pt] Which tasks did you work on?
+
+Since I was working solo on this project, I ended up doing everything myself:
+
+- Backend API development using FastAPI
+- Frontend web application with Next.js and TypeScript
+- Database design and implementation (PostgreSQL with Alembic migrations)
+- LLM-based image analysis pipeline (Claude vision API integration)
+- Object detection model fine-tuning (YOLOv8 on custom cat body parts dataset)
+- Model deployment and production pipeline (cv-version branch)
+- Authentication system using Stytch magic links
+- Chatbot implementation with Ollama and LangGraph for conversation state management
+- Docker containerization for deployment
+- Dataset creation and annotation (manually labeled 446 images with bounding boxes for eyes, mouths, and tails)
+- README documentation and project setup
+
+
+[0.2 pt] What's your biggest challenge in the project?
+
+The hardest part was definitely working on the YOLOv8 object detection model. I had to manually label 446 images with bounding boxes for three different classes (eyes, mouth, and tail), which took me around 5+ hours of just clicking and drawing boxes.
+
+Even though the model got really good validation scores (mAP50 of 0.9870), when I actually deployed it to production, it started missing a lot of body parts in real images. It was frustrating because the validation metrics looked great, but the model just didn't work well in the real world.
+
+This really showed me how different training data can be from what you see in production, and how I needed way more diverse data than I had.
+
+
+[0.2 pt] How did you address the challenge?
+
+I tackled this by breaking it down into steps:
+
+1. Research phase: I did some research online to see what other people had tried, and I found the DeepCat project that used YOLOv8 for something similar.
+
+2. LLM approach first: I decided to try the LLM approach first since it didn't need any training data, so I built the Claude API pipeline.
+
+3. Object detection development: After that, I worked on the object detection method, which was way more time consuming. I fine-tuned YOLOv8 on my custom dataset.
+
+4. Production evaluation: I implemented both approaches to see how they actually performed.
+
+5. Decision making: The results made it clear that the LLM approach worked much better, so that's what I ended up using.
+
+[0.2 pt] What did you learn from the final project? (What could have been done better?)
+
+Key Learnings:
+
+1. Production ML deployment: The biggest thing I learned was how different it is to actually deploy ML models in production compared to just training them in class. In class, you just train a model and maybe test it on a validation set, but in production you have to think about Docker containers, API design, and handling all kinds of weird real-world data.
+
+2. Dataset annotation challenges: I also learned how painfully slow manual annotation is. I spent 5 hours just labeling 450 images, which really made me appreciate automated tools or having a team to help.
+
+3. Software engineering: I got better at software engineering stuff too, like using Docker, database migrations, and making sure other people can actually run my project.
+
+4. Chatbot architecture: I learned how chatbots work under the hood, like how they manage conversation context and how much space and processing power they actually need.
+
+What I wish I did better:
+
+1. Prompt engineering: I think I could have spent more time figuring out how to prompt Claude better. Maybe I could have set up some kind of feedback loop to make sure the responses were accurate, similar to how Lovable does it.
+
+2. Dataset expansion: I also really wish I had either found a partner to help label images or figured out a faster way to do it, because 5 hours of labeling was brutal and I probably needed way more data.
+
+3. Evaluation metrics: Another thing is I could have tried to come up with better ways to evaluate the Claude approach, though that's tricky since emotional state is pretty subjective.
+
+
+[0.2 pt] What's your self-evaluation for code and report? A, B, C, or D? Why?
+
+Self-evaluation: A
+
+Code Quality:
+I built a full-stack app with a lot of moving parts: LLM integration, object detection model training, a chatbot with conversation management, authentication, and database stuff. I tried to structure it well with separate services, routes, and models, and I made sure everything was containerized with Docker so it's easy to deploy. The README has all the setup instructions too.
+
+Report Quality:
+I followed the CVPR format and included all the required sections. I tried to be honest about what worked and what didn't, and I think the analysis of the results is pretty solid. The report shows I understood the technical challenges and thought through the trade-offs between the two approaches.
+
+Overall:
+I put a ton of work into this project across multiple areas (ML, web dev, DevOps), spent a lot of time on dataset creation and model training, and I think comparing the two different approaches gives some useful insights. So yeah, I think an A reflects the effort I put in.
+
