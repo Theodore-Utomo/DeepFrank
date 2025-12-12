@@ -9,6 +9,22 @@ DeepFrank is a full-stack web application for analyzing cat emotions and providi
 - 📊 **Profile Management**: View your analysis history and saved chats
 - 🔐 **Authentication**: Secure authentication using Stytch magic links
 
+## Branches
+
+### Main Branch
+The main branch includes all features listed above, using Claude's vision API for image analysis and full chatbot functionality.
+
+### cv-version Branch
+The `cv-version` branch is an experimental branch that does **not** include chatbot functionality. The purpose of this branch was to test how a fine-tuned YOLO object detection model would perform in a production environment. The model was designed to detect and analyze specific body parts (eyes, mouth, tail, etc.) to deduce a cat's emotional state.
+
+**Key findings from the cv-version branch:**
+- The YOLO object detection model showed significant limitations in production
+- The model frequently missed critical body parts such as eyes, mouths, and tails
+- These detection failures limited the model's ability to provide accurate emotional state analysis
+- This evaluation helped inform the decision to use LLM-based image analysis in the main branch instead
+
+**Note**: If switching to the `cv-version` branch, make sure to rebuild Docker containers as mentioned in the [Rebuilding Containers](#rebuilding-containers) section below.
+
 ## Tech Stack
 
 ### Backend
