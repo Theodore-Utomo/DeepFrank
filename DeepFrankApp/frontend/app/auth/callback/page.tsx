@@ -14,21 +14,12 @@ export default function AuthCallbackPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Prevent multiple authentication attempts
     if (status !== 'loading') {
       return;
     }
 
-    // Stytch sends token in the 'token' query parameter
-    // The URL format is: /auth/callback?stytch_token_type=magic_links&token=...
     const token = searchParams.get('token') || searchParams.get('stytch_token');
     const tokenType = searchParams.get('stytch_token_type');
-    
-    console.log('Callback page loaded');
-    console.log('Token type:', tokenType);
-    console.log('Token present:', !!token);
-    console.log('Token length:', token?.length || 0);
-    console.log('Full URL:', window.location.href);
     
     if (!token) {
       setStatus('error');
@@ -38,25 +29,20 @@ export default function AuthCallbackPage() {
 
     const handleAuth = async () => {
       try {
-        console.log('Attempting to authenticate with token (first 10 chars):', token.substring(0, 10));
         const response = await authenticateMagicLink(token);
-        console.log('Authentication successful:', response.user.email);
         login(response.user, response.session_token);
         setStatus('success');
         
-        // Redirect to home after a brief delay
         setTimeout(() => {
           router.push('/');
         }, 2000);
       } catch (err) {
-        console.error('Authentication error:', err);
         setStatus('error');
         const errorMessage = err instanceof Error ? err.message : 'Authentication failed';
         setError(errorMessage);
       }
     };
 
-    // Small delay to ensure the page is fully loaded
     const timeoutId = setTimeout(() => {
       handleAuth();
     }, 100);

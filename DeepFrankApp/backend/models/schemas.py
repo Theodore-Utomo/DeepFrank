@@ -46,7 +46,6 @@ class BreedsResponse(BaseModel):
     message: Optional[str] = None
 
 
-# Authentication schemas
 class MagicLinkRequest(BaseModel):
     """Request model for sending magic link"""
     email: str
@@ -98,6 +97,7 @@ class ImageAnalysisHistoryItem(BaseModel):
     detections: List[BodyPartDetection]
     analysis: Optional[AnalysisResult] = None
     emotion: Optional[str] = None
+    chat_session_id: Optional[str] = None
     created_at: str
 
 
@@ -126,3 +126,9 @@ class ChatMessageResponse(BaseModel):
     content: str
     created_at: str
     updated_at: str
+
+
+class ImageAnalysisResponse(BaseModel):
+    """Response model for image analysis endpoint"""
+    analysis_text: str
+    chat_session_id: Optional[str] = None

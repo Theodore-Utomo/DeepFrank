@@ -33,16 +33,17 @@ services:
       - ./DeepFrankApp/backend/.env
     environment:
       - ENV=development
-      - MODEL_CONF_THRESHOLD=0.25
-      - MODEL_IOU_THRESHOLD=0.45
       - ALLOWED_ORIGINS=http://localhost:3000
       - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/deepfrank_test
       - STYTCH_ENVIRONMENT=test
       - MAGIC_LINK_REDIRECT_URL=http://localhost:3000/auth/callback
+      # Ollama configuration (for chat)
       - OLLAMA_BASE_URL=http://cscigpu08.bc.edu:11434
       - OLLAMA_MODEL=mistral:latest
       - OLLAMA_TEMPERATURE=0
       - CHAT_SYSTEM_PROMPT=You are Frankie, a helpful, friendly, and knowledgeable assistant specializing in cat health and emotional analysis. You help users understand their cat's emotional state and provide helpful advice about cat care.
+      # Claude API configuration (for image analysis)
+      # Note: ANTHROPIC_API_KEY, CLAUDE_MODEL, and CLAUDE_TEMPERATURE are loaded from .env file via env_file above
     restart: unless-stopped
     depends_on:
       postgres:

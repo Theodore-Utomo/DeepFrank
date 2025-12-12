@@ -3,14 +3,13 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sess
 from sqlalchemy.orm import declarative_base
 from core.config import DATABASE_URL
 
-# Create async engine
 engine = create_async_engine(
     DATABASE_URL,
-    echo=True,  # Set to False in production
+    echo=True,  # Set to False in prod
     future=True,
 )
 
-# Create async session factory
+# Async session factory
 AsyncSessionLocal = async_sessionmaker(
     engine,
     class_=AsyncSession,
@@ -19,7 +18,7 @@ AsyncSessionLocal = async_sessionmaker(
     autoflush=False,
 )
 
-# Base class for models
+# Base class (for models)
 Base = declarative_base()
 
 

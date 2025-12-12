@@ -6,6 +6,12 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import { ImageAnalysisHistoryItem } from '@/types/api';
 import { getUserAnalyses } from '@/lib/api';
+import { DashboardLayout } from '@/components/layouts/DashboardLayout';
+import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
+import { ImageIcon, Upload, Calendar, Heart, AlertCircle, Loader2, MessageSquare } from 'lucide-react';
 
 export default function ProfilePage() {
   const { user, isAuthenticated, loading: authLoading } = useAuth();
@@ -16,13 +22,11 @@ export default function ProfilePage() {
   const [total, setTotal] = useState(0);
 
   useEffect(() => {
-    // Redirect to login if not authenticated
     if (!authLoading && !isAuthenticated) {
       router.push('/login');
       return;
     }
 
-    // Fetch user analyses if authenticated
     if (isAuthenticated && user) {
       fetchAnalyses();
     }
@@ -38,7 +42,6 @@ export default function ProfilePage() {
       setTotal(response.total);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load analyses');
-      console.error('Error fetching analyses:', err);
     } finally {
       setLoading(false);
     }
@@ -59,7 +62,7 @@ export default function ProfilePage() {
     const parts: string[] = [];
 
     if (item.detections.length > 0) {
-      parts.push(`Detections: ${item.detections.length} body parts`);
+      parts.push(`${item.detections.length} body parts`);
     }
 
     if (item.analysis) {
@@ -78,187 +81,218 @@ export default function ProfilePage() {
 
   if (authLoading || loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading...</p>
+      <DashboardLayout>
+        <div className="space-y-6">
+          <Skeleton className="h-12 w-64" />
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {[1, 2, 3].map((i) => (
+              <Skeleton key={i} className="h-24" />
+            ))}
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <Skeleton key={i} className="h-64" />
+            ))}
+          </div>
         </div>
-      </div>
+      </DashboardLayout>
     );
   }
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-12 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-6xl mx-auto">
-          <div className="bg-white rounded-lg shadow-xl p-8">
-            <div className="text-center">
-              <p className="text-red-600 mb-4">{error}</p>
-              <button
-                onClick={fetchAnalyses}
-                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
-              >
+      <DashboardLayout>
+        <Card className="p-8">
+          <div className="text-center space-y-4">
+            <AlertCircle className="h-12 w-12 text-destructive mx-auto" />
+            <div>
+              <p className="text-destructive font-medium mb-2">{error}</p>
+              <Button onClick={fetchAnalyses} variant="outline">
+                <Loader2 className="mr-2 h-4 w-4" />
                 Retry
-              </button>
+              </Button>
             </div>
           </div>
-        </div>
-      </div>
+        </Card>
+      </DashboardLayout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-6xl mx-auto">
-        <div className="bg-white rounded-lg shadow-xl p-8">
-          {/* Header */}
-          <div className="mb-6">
-            <Link
-              href="/"
-              className="inline-flex items-center text-indigo-600 hover:text-indigo-700 font-medium mb-4
-                transition-colors duration-200"
-            >
-              <svg
-                className="w-5 h-5 mr-2"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M10 19l-7-7m0 0l7-7m-7 7h18"
-                />
-              </svg>
-              Back to Home
-            </Link>
+    <DashboardLayout>
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div className="space-y-2">
+            <h1 className="text-4xl font-bold text-foreground">My Profile</h1>
+            <p className="text-muted-foreground">
+              View your uploaded cat images and analysis history
+            </p>
           </div>
-          <div className="flex items-center justify-between mb-8">
-            <div>
-              <h1 className="text-4xl font-bold text-gray-900 mb-2">
-                My Profile
-              </h1>
-              <p className="text-gray-600">
-                View your uploaded cat images and analysis history
-              </p>
-            </div>
-            <div className="flex gap-4">
-              <Link
-                href="/vets"
-                className="px-4 py-2 text-indigo-600 font-semibold rounded-lg
-                  hover:bg-indigo-50 transition-colors duration-200"
-              >
-                Vets & Products
-              </Link>
-              <Link
-                href="/"
-                className="px-4 py-2 bg-indigo-600 text-white font-semibold rounded-lg
-                  hover:bg-indigo-700 transition-colors duration-200"
-              >
-                Upload New
-              </Link>
-            </div>
-          </div>
+          <Link href="/">
+            <Button size="lg">
+              <Upload className="mr-2 h-4 w-4" />
+              Upload New
+            </Button>
+          </Link>
+        </div>
 
-          {/* Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-            <div className="bg-indigo-50 rounded-lg p-4">
-              <p className="text-sm text-indigo-600 font-medium">Total Images</p>
-              <p className="text-3xl font-bold text-indigo-900">{total}</p>
+        {/* Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Card className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground mb-1">Total Images</p>
+                <p className="text-3xl font-bold text-foreground">{total}</p>
+              </div>
+              <div className="p-3 bg-primary/10 rounded-lg">
+                <ImageIcon className="h-6 w-6 text-primary" />
+              </div>
             </div>
-            <div className="bg-green-50 rounded-lg p-4">
-              <p className="text-sm text-green-600 font-medium">Analyses</p>
-              <p className="text-3xl font-bold text-green-900">{total}</p>
+          </Card>
+          <Card className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground mb-1">Analyses</p>
+                <p className="text-3xl font-bold text-foreground">{total}</p>
+              </div>
+              <div className="p-3 bg-primary/10 rounded-lg">
+                <Calendar className="h-6 w-6 text-primary" />
+              </div>
             </div>
-            <div className="bg-purple-50 rounded-lg p-4">
-              <p className="text-sm text-purple-600 font-medium">Emotions Detected</p>
-              <p className="text-3xl font-bold text-purple-900">
-                {new Set(analyses.map(item => item.emotion).filter(Boolean)).size}
-              </p>
+          </Card>
+          <Card className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground mb-1">Emotions Detected</p>
+                <p className="text-3xl font-bold text-foreground">
+                  {new Set(analyses.map(item => item.emotion).filter(Boolean)).size}
+                </p>
+              </div>
+              <div className="p-3 bg-primary/10 rounded-lg">
+                <Heart className="h-6 w-6 text-primary" />
+              </div>
             </div>
-          </div>
+          </Card>
+        </div>
 
-          {/* Image Grid */}
-          {analyses.length === 0 ? (
-            <div className="text-center py-12">
-              <p className="text-gray-500 text-lg mb-4">No images uploaded yet</p>
-              <Link
-                href="/"
-                className="inline-block px-6 py-3 bg-indigo-600 text-white font-semibold rounded-lg
-                  hover:bg-indigo-700 transition-colors duration-200"
-              >
-                Upload Your First Image
+        {/* Image Grid */}
+        {analyses.length === 0 ? (
+          <Card className="p-12">
+            <div className="text-center space-y-4">
+              <div className="p-4 bg-muted rounded-full w-16 h-16 mx-auto flex items-center justify-center">
+                <ImageIcon className="h-8 w-8 text-muted-foreground" />
+              </div>
+              <div>
+                <p className="text-lg font-medium text-foreground mb-2">No images uploaded yet</p>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Start analyzing your cat's emotional state
+                </p>
+              </div>
+              <Link href="/">
+                <Button size="lg">
+                  <Upload className="mr-2 h-4 w-4" />
+                  Upload Your First Image
+                </Button>
               </Link>
             </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {analyses.map((item) => (
-                <div
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {analyses.map((item) => {
+              const hasChat = !!item.chat_session_id;
+              
+              return (
+                <Card
                   key={item.id}
-                  className="bg-gray-50 rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow"
+                  className={`overflow-hidden transition-all ${
+                    hasChat 
+                      ? 'hover:shadow-lg cursor-pointer hover:border-primary/50' 
+                      : 'hover:shadow-lg'
+                  }`}
+                  onClick={() => {
+                    if (hasChat && item.chat_session_id) {
+                      router.push(`/chat/${item.chat_session_id}`);
+                    }
+                  }}
                 >
                   {/* Image Placeholder */}
-                  <div className="w-full h-48 bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center">
-                    <svg
-                      className="w-16 h-16 text-gray-400"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                      />
-                    </svg>
+                  <div className="relative w-full h-48 bg-gradient-to-br from-muted to-muted/50 flex items-center justify-center">
+                    <ImageIcon className="w-16 h-16 text-muted-foreground" />
+                    {hasChat && (
+                      <div className="absolute top-2 right-2 p-2 bg-primary rounded-full shadow-md">
+                        <MessageSquare className="w-4 h-4 text-primary-foreground" />
+                      </div>
+                    )}
                   </div>
 
                   {/* Image Info */}
-                  <div className="p-4">
-                    <h3 className="font-semibold text-gray-900 mb-1 truncate">
-                      {item.filename}
-                    </h3>
-                    <p className="text-xs text-gray-500 mb-3">
-                      {formatDate(item.created_at)}
-                    </p>
+                  <div className="p-4 space-y-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-semibold text-foreground mb-1 truncate">
+                          {item.filename}
+                        </h3>
+                        <p className="text-xs text-muted-foreground flex items-center gap-1">
+                          <Calendar className="h-3 w-3" />
+                          {formatDate(item.created_at)}
+                        </p>
+                      </div>
+                      {hasChat && (
+                        <Badge variant="secondary" className="text-xs flex items-center gap-1 whitespace-nowrap">
+                          <MessageSquare className="h-3 w-3" />
+                          Chat
+                        </Badge>
+                      )}
+                    </div>
 
                     {/* Analysis Summary */}
                     <div className="space-y-2">
-                      <div className="flex flex-wrap gap-1">
-                        {item.detections.map((det, idx) => (
-                          <span
-                            key={idx}
-                            className="px-2 py-1 text-xs font-medium rounded
-                              bg-indigo-100 text-indigo-800"
-                          >
-                            {det.class_name}
-                          </span>
-                        ))}
-                      </div>
+                      {item.detections.length > 0 && (
+                        <div className="flex flex-wrap gap-1">
+                          {item.detections.slice(0, 3).map((det, idx) => (
+                            <Badge key={idx} variant="secondary" className="text-xs">
+                              {det.class_name}
+                            </Badge>
+                          ))}
+                          {item.detections.length > 3 && (
+                            <Badge variant="secondary" className="text-xs">
+                              +{item.detections.length - 3}
+                            </Badge>
+                          )}
+                        </div>
+                      )}
 
-                      <p className="text-sm text-gray-700 line-clamp-2">
+                      <p className="text-sm text-muted-foreground line-clamp-2">
                         {formatAnalysis(item)}
                       </p>
 
                       {item.emotion && (
-                        <div className="pt-2 border-t border-gray-200">
-                          <span className="text-xs font-semibold text-gray-600">Emotion: </span>
-                          <span className="text-sm font-bold text-indigo-600 uppercase">
-                            {item.emotion}
-                          </span>
+                        <div className="pt-2 border-t border-border">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-medium text-muted-foreground">Emotion:</span>
+                            <Badge variant="default" className="text-xs">
+                              {item.emotion.toUpperCase()}
+                            </Badge>
+                          </div>
                         </div>
                       )}
                     </div>
+                    
+                    {hasChat && (
+                      <div className="pt-2 border-t border-border">
+                        <p className="text-xs text-muted-foreground italic">
+                          Click to view and continue chat
+                        </p>
+                      </div>
+                    )}
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+                </Card>
+              );
+            })}
+          </div>
+        )}
       </div>
-    </div>
+    </DashboardLayout>
   );
 }
-

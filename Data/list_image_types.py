@@ -13,12 +13,10 @@ def list_image_extensions(directory_path: str) -> Counter:
 		full_path = os.path.join(directory_path, entry)
 		if not os.path.isfile(full_path):
 			continue
-		# Extract extension; handle files without extension
 		_, ext = os.path.splitext(entry)
 		if not ext:
 			counts["<no extension>"] += 1
 			continue
-		# Normalize extension (lowercase, without leading dot)
 		normalized = ext.lower().lstrip('.')
 		counts[normalized] += 1
 

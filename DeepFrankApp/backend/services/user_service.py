@@ -26,14 +26,12 @@ class UserService:
         Returns:
             User database model
         """
-        # Try to find existing user
         result = await db.execute(
             select(User).where(User.stytch_user_id == stytch_user_id)
         )
         user = result.scalar_one_or_none()
         
         if not user:
-            # Create new user
             user = User(
                 id=uuid.uuid4(),
                 stytch_user_id=stytch_user_id,
