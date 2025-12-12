@@ -46,7 +46,6 @@ class BreedsResponse(BaseModel):
     message: Optional[str] = None
 
 
-# Authentication schemas
 class MagicLinkRequest(BaseModel):
     """Request model for sending magic link"""
     email: str

@@ -3,24 +3,23 @@ import os
 from pathlib import Path
 from typing import List
 
-# Base directory
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# API configuration
+# API config
 API_V1_PREFIX = "/api/v1"
 ALLOWED_ORIGINS: List[str] = os.getenv(
     "ALLOWED_ORIGINS", "*"
 ).split(",") if os.getenv("ALLOWED_ORIGINS") != "*" else ["*"]
 
-# Database configuration
+# Database config
 DATABASE_URL = os.getenv(
     "DATABASE_URL",
     "postgresql+asyncpg://localhost:5432/deepfrank_test"
 )
-# For synchronous operations (Alembic migrations)
+# For Alembic migrations
 DATABASE_URL_SYNC = DATABASE_URL.replace("+asyncpg", "").replace("postgresql+asyncpg", "postgresql+psycopg2")
 
-# Stytch configuration
+# Stytch config
 STYTCH_PROJECT_ID = os.getenv("STYTCH_PROJECT_ID")
 STYTCH_SECRET = os.getenv("STYTCH_SECRET")
 STYTCH_ENVIRONMENT = os.getenv("STYTCH_ENVIRONMENT", "test")
@@ -29,21 +28,21 @@ MAGIC_LINK_REDIRECT_URL = os.getenv(
     "http://localhost:3000/auth/callback"
 )
 
-# Data paths
+# Data dirs
 DATA_DIR = BASE_DIR.parent.parent / "Data"
 BREEDS_JSON_PATH = DATA_DIR / "breeds.json"
 
-# Ollama configuration (for chat)
+# Ollama config (for chat)
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://cscigpu08.bc.edu:11434")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "mistral:latest")
 OLLAMA_TEMPERATURE = float(os.getenv("OLLAMA_TEMPERATURE", "0"))
 
-# Claude API configuration (for image analysis)
+# Claude API config (for image analysis)
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
 CLAUDE_MODEL = os.getenv("CLAUDE_MODEL", "claude-3-5-sonnet-20240620")
 CLAUDE_TEMPERATURE = float(os.getenv("CLAUDE_TEMPERATURE", "0.7"))
 
-# Chat system prompt
+# Chat system prompt (for chat)
 CHAT_SYSTEM_PROMPT = os.getenv(
     "CHAT_SYSTEM_PROMPT",
     """You are Frankie, a helpful, friendly, and knowledgeable assistant specializing in cat health and emotional analysis. 
@@ -56,7 +55,7 @@ CHAT_SYSTEM_PROMPT = os.getenv(
     """
 )
 
-# Image analysis system prompt
+# Image analysis system prompt (for image analysis)
 IMAGE_ANALYSIS_SYSTEM_PROMPT = os.getenv(
     "IMAGE_ANALYSIS_SYSTEM_PROMPT",
     """You are an expert in feline behavior and cat body-language analysis.
@@ -127,7 +126,7 @@ Don't use language to scare the user, use simple language that informs the user 
 """
 )
 
-# Application metadata
+# App metadata
 APP_NAME = "DeepFrank API"
 APP_VERSION = "1.0.0"
 APP_DESCRIPTION = "API for DeepFrank cat emotional analysis using deep learning"

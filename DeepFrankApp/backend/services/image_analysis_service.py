@@ -36,7 +36,6 @@ class ImageAnalysisService:
         if not claude_client:
             raise Exception("ANTHROPIC_API_KEY not set. Please set the ANTHROPIC_API_KEY environment variable.")
         
-        # Convert image to base64
         image_base64 = base64.b64encode(image_bytes).decode('utf-8')
         
         # Determine image media type (assume JPEG, but could detect from bytes)
@@ -71,7 +70,6 @@ class ImageAnalysisService:
                 ]
             )
             
-            # Extract text from response
             response_text = message.content[0].text
             return response_text
             
@@ -103,7 +101,6 @@ class ImageAnalysisService:
         Returns:
             Tuple of (Saved ImageAnalysis, ChatSession if created)
         """
-        # Log user information for debugging
         if user_id:
             print(f"ImageAnalysisService: Saving analysis with user_id: {user_id}")
         else:
@@ -130,7 +127,6 @@ class ImageAnalysisService:
         await db.refresh(analysis_record)
         print(f"ImageAnalysisService: Successfully saved analysis with id: {analysis_record.id}, user_id: {analysis_record.user_id}, chat_session_id: {analysis_record.chat_session_id}")
         
-        # Save analysis as first AI message in chat session
         if chat_session:
             await ChatService.save_message(
                 session_id=chat_session.id,
@@ -235,19 +231,16 @@ class ImageAnalysisService:
         Returns:
             UserAnalysesResponse with formatted analysis history
         """
-        # Get analyses from database
         analyses = await ImageAnalysisService.get_analyses_by_user(
             db, user_id, limit, offset
         )
         
-        # Get total count
         count_result = await db.execute(
             select(func.count(ImageAnalysis.id))
             .where(ImageAnalysis.user_id == user_id)
         )
         total = count_result.scalar() or 0
         
-        # Format analyses for response
         formatted_analyses = []
         for analysis in analyses:
             # Parse detections from JSON
@@ -270,7 +263,7 @@ class ImageAnalysisService:
                             analysis_result = AnalysisResult(**analysis_data)
                         except json.JSONDecodeError:
                             # If it's not JSON, it's plain text (new format)
-                            # For backward compatibility, we'll set it to None since AnalysisResult expects structured data
+                            # For backward compatibility, set to None since AnalysisResult expects structured data
                             analysis_result = None
                     else:
                         analysis_data = analysis.analysis_result
@@ -278,10 +271,7 @@ class ImageAnalysisService:
                 except (json.JSONDecodeError, Exception) as e:
                     print(f"Error parsing analysis_result: {e}")
             
-            # Get emotion from database (now stored separately)
             emotion = analysis.emotion
-            
-            # Get chat_session_id if it exists
             chat_session_id = str(analysis.chat_session_id) if analysis.chat_session_id else None
             
             formatted_analyses.append(

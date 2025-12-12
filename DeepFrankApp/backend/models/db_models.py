@@ -24,15 +24,14 @@ class ImageAnalysis(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     filename = Column(String, nullable=False)
-    detections = Column(JSON, nullable=True)  # Store detection results
-    analysis_result = Column(Text, nullable=True)  # Store analysis text
-    emotion = Column(String, nullable=True)  # Store detected emotion
+    detections = Column(JSON, nullable=True)  
+    analysis_result = Column(Text, nullable=True)  
+    emotion = Column(String, nullable=True)  
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True, index=True)
     chat_session_id = Column(UUID(as_uuid=True), ForeignKey("chat_sessions.id"), nullable=True, index=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     
-    # Relationships
     user = relationship("User")
     chat_session = relationship("ChatSession")
 
@@ -45,7 +44,6 @@ class ChatSession(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     
-    # Relationship to user
     user = relationship("User")
     
 class ChatMessage(Base):
@@ -59,6 +57,5 @@ class ChatMessage(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     
-    # Relationship to chat session
     chat_session = relationship("ChatSession")
 

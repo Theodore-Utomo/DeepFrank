@@ -28,7 +28,6 @@ export default function Home() {
     setError(null);
     setResult(null);
     
-    // Create preview
     const reader = new FileReader();
     reader.onloadend = () => {
       setPreview(reader.result as string);

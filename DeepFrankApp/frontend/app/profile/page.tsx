@@ -22,13 +22,11 @@ export default function ProfilePage() {
   const [total, setTotal] = useState(0);
 
   useEffect(() => {
-    // Redirect to login if not authenticated
     if (!authLoading && !isAuthenticated) {
       router.push('/login');
       return;
     }
 
-    // Fetch user analyses if authenticated
     if (isAuthenticated && user) {
       fetchAnalyses();
     }
@@ -44,7 +42,6 @@ export default function ProfilePage() {
       setTotal(response.total);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load analyses');
-      console.error('Error fetching analyses:', err);
     } finally {
       setLoading(false);
     }

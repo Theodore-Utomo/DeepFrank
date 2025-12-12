@@ -31,7 +31,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       await apiLogout();
     } catch (error) {
-      console.error('Logout error:', error);
+      // Logout error - continue with clearing local state
     } finally {
       if (typeof window !== 'undefined') {
         localStorage.removeItem('session_token');
@@ -44,7 +44,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const refreshUser = async () => {
     setLoading(true);
     
-    // Check for token first - if no token, skip API call entirely
     if (typeof window === 'undefined') {
       setLoading(false);
       return;
@@ -57,13 +56,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    // If we have a token, try to validate it
     try {
       const session = await getCurrentUser();
       setUser(session.user);
     } catch (error) {
-      // Token is invalid or expired, clear it
-      console.error('Failed to refresh user:', error);
       localStorage.removeItem('session_token');
       setUser(null);
     } finally {

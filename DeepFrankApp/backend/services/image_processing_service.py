@@ -67,10 +67,8 @@ class ImageProcessingService:
                 if chat_session:
                     chat_session_id = str(chat_session.id)
         except Exception as db_error:
-            # Log but don't fail the request if database save fails
             print(f"Warning: Failed to save to database: {db_error}")
         
-        # Build response
         return ImageAnalysisResponse(
             analysis_text=analysis_text,
             chat_session_id=chat_session_id

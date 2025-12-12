@@ -7,7 +7,7 @@ from services.user_service import UserService
 from models.db_models import User
 from core.database import get_db
 
-# Global service instances (lazy loaded)
+# Global service instances (lazy-loaded)
 _auth_service: Optional[AuthService] = None
 
 
@@ -68,7 +68,7 @@ async def get_current_user(
             detail="Authorization header missing"
         )
     
-    # Extract token from "Bearer <token>" format
+    # Extract token from "Bearer <token>"
     try:
         scheme, token = authorization.split()
         if scheme.lower() != "bearer":
@@ -79,7 +79,7 @@ async def get_current_user(
             detail="Invalid authorization header format. Expected: Bearer <token>"
         )
     
-    # Validate session with Stytch
+    # Validate session
     try:
         session_data = auth_service.get_user_from_session(token)
         stytch_user_id = session_data["stytch_user_id"]
@@ -98,7 +98,7 @@ async def get_current_user(
             detail=f"Invalid or expired session: {str(e)}"
         )
     
-    # Get or create user in database using service
+    # Get or create user
     user = await UserService.get_or_create_user(db, stytch_user_id, email)
     
     return user
@@ -127,7 +127,7 @@ async def get_optional_user(
         print("get_optional_user: No authorization header provided")
         return None
     
-    # Extract token from "Bearer <token>" format
+    # Extract token from "Bearer <token>"
     try:
         scheme, token = authorization.split()
         if scheme.lower() != "bearer":
@@ -138,7 +138,7 @@ async def get_optional_user(
         print(f"get_optional_user: Error parsing authorization header: {e}")
         return None
     
-    # Validate session with Stytch
+    # Validate session
     try:
         session_data = auth_service.get_user_from_session(token)
         stytch_user_id = session_data["stytch_user_id"]

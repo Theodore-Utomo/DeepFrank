@@ -29,19 +29,16 @@ export default function ChatPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const hasSentInitialMessage = useRef(false);
 
-  // Scroll to bottom when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
   useEffect(() => {
-    // Redirect to login if not authenticated
     if (!authLoading && !isAuthenticated) {
       router.push('/login');
       return;
     }
 
-    // Load analysis data from sessionStorage if available
     const storedAnalysis = sessionStorage.getItem('analysisForChat');
     if (storedAnalysis) {
       try {
@@ -49,18 +46,16 @@ export default function ChatPage() {
         setAnalysisData(parsed);
         sessionStorage.removeItem('analysisForChat');
       } catch (e) {
-        console.error('Failed to parse analysis data:', e);
+        // Failed to parse analysis data
       }
     }
 
-    // Load messages if authenticated
     if (isAuthenticated && sessionId) {
       loadMessages();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated, authLoading, sessionId]);
 
-  // Separate effect to send initial message after analysisData is set and messages are loaded
   useEffect(() => {
     if (analysisData && !hasSentInitialMessage.current && messages.length === 0 && !loading && isAuthenticated) {
       hasSentInitialMessage.current = true;
@@ -77,7 +72,6 @@ export default function ChatPage() {
       setMessages(loadedMessages);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load messages');
-      console.error('Error loading messages:', err);
     } finally {
       setLoading(false);
     }
@@ -106,16 +100,11 @@ export default function ChatPage() {
         content: messageContent,
       };
       
-      // Send message - this will save user message and return AI response
-      const aiResponse = await sendChatMessage(messageRequest);
-      
-      // Reload messages to get the actual user message (with real ID) and AI response
+      await sendChatMessage(messageRequest);
       await loadMessages();
     } catch (err) {
-      // Remove optimistic message on error
       setMessages((prev) => prev.filter(msg => msg.id !== optimisticUserMessage.id));
       setError(err instanceof Error ? err.message : 'Failed to send initial message');
-      console.error('Error sending initial message:', err);
     } finally {
       setSending(false);
     }
@@ -130,7 +119,6 @@ export default function ChatPage() {
     setInputMessage('');
     setError(null);
 
-    // Optimistically add user message to UI immediately
     const optimisticUserMessage: ChatMessage = {
       id: `temp-${Date.now()}`,
       session_id: sessionId,
@@ -148,16 +136,11 @@ export default function ChatPage() {
         content: messageContent,
       };
       
-      // Send message - this will save user message and return AI response
-      const aiResponse = await sendChatMessage(messageRequest);
-      
-      // Reload messages to get the actual user message (with real ID) and AI response
+      await sendChatMessage(messageRequest);
       await loadMessages();
     } catch (err) {
-      // Remove optimistic message on error
       setMessages((prev) => prev.filter(msg => msg.id !== optimisticUserMessage.id));
       setError(err instanceof Error ? err.message : 'Failed to send message');
-      console.error('Error sending message:', err);
     } finally {
       setSending(false);
     }

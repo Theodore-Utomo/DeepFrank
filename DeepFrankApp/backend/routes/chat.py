@@ -35,7 +35,6 @@ async def get_chat_session(
     """Get a chat session by ID (must belong to the authenticated user)"""
     session = await ChatService.get_session(session_id, db)
     
-    # Verify user owns the session
     if session.user_id != user.id:
         raise HTTPException(
             status_code=403,
@@ -59,7 +58,6 @@ async def get_chat_messages(
     """Get all messages for a chat session (must belong to the authenticated user)"""
     session = await ChatService.get_session(session_id, db)
     
-    # Verify user owns the session
     if session.user_id != user.id:
         raise HTTPException(
             status_code=403,
